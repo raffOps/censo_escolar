@@ -1,20 +1,17 @@
-data "google_client_config" "default" {
-}
-
 resource "google_storage_bucket" "bucket-bronze" {
-  name          = "${data.google_client_config.default.project}_bronze"
+  name          = "${var.project}-bronze"
   location      = "EU"
   force_destroy = false
 }
 
 resource "google_storage_bucket" "bucket-silver" {
-  name          = "${data.google_client_config.default.project}_silver"
+  name          = "${var.project}-silver"
   location      = "EU"
   force_destroy = false
 }
 
 resource "google_storage_bucket" "bucket-gold" {
-  name          = "${data.google_client_config.default.project}_gold"
+  name          = "${var.project}-gold"
   location      = "EU"
   force_destroy = false
 }

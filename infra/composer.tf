@@ -14,8 +14,8 @@
 //          "AIRFLOW_VAR_BUCKET_BRONZE" = google_storage_bucket.bucket-bronze.name
 //          "AIRFLOW_VAR_BUCKET_SILVER" = google_storage_bucket.bucket-silver.name
 //          "AIRFLOW_VAR_BUCKET_GOLD" = google_storage_bucket.bucket-gold.name
-//          "AIRFLOW_VAR_FIRST_YEAR" = "2013"
-//          "AIRFLOW_VAR_LAST_YEAR" = "2021"
+//          "AIRFLOW_VAR_FIRST_YEAR" = "2012"
+//          "AIRFLOW_VAR_LAST_YEAR" = "2014"
 //          "AIRFLOW_VAR_PROJECT": var.project
 //        }
 //      }

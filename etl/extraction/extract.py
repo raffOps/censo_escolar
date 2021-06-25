@@ -1,18 +1,15 @@
 import os
+import re
 import sys
-import requests
 from glob import glob
-from datetime import datetime
-from io import BytesIO
 from time import sleep
 from zipfile import ZipFile, BadZipfile
-from hashlib import md5
-import re
+
 import pandas as pd
 import pyarrow.parquet as pq
 import pyarrow as pa
-import time
-
+import patoolib
+import requests
 from google.cloud import storage
 
 if os.getenv("CHUNCKSIZE"):
@@ -24,41 +21,55 @@ else:
 if os.getenv("BUCKET"):
     BUCKET = os.getenv("BUCKET")
 else:
-    BUCKET = "rjr-teste1"
+    BUCKET = "rjr-teste"
 
-# DICT_URLS = {
-#     "2020": "https://download.inep.gov.br/dados_abertos/microdados_censo_escolar_2020.zip",
-#     "2019": "https://download.inep.gov.br/microdados/microdados_educacao_basica_2019.zip",
-#     "2018": "https://download.inep.gov.br/microdados/microdados_educacao_basica_2018.zip",
-#     "2017": "https://download.inep.gov.br/microdados/micro_censo_escolar_2017.zip",
-#     "2016": "https://download.inep.gov.br/microdados/micro_censo_escolar_2016.zip",
-#     "2015": "https://download.inep.gov.br/microdados/micro_censo_escolar_2015.zip",
-#     "2014": "https://download.inep.gov.br/microdados/micro_censo_escolar_2014.zip",
-#     "2013": "https://download.inep.gov.br/microdados/micro_censo_escolar_2013.zip",
-#     "2012": "https://download.inep.gov.br/microdados/micro_censo_escolar_2012.zip",
-#     "2011": "https://download.inep.gov.br/microdados/micro_censo_escolar_2011.zip",
-#     "2010": "https://download.inep.gov.br/microdados/micro_censo_escolar_2010.zip"
-# }
+if os.getenv("GOOGLE_APPLICATION_CREDENTIALS"):
+    CREDENTIALS = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+else:
+    CREDENTIALS = "key.json"
 
 
 def get_url(year):
-    if year in "2019 2018":
-        return f"https://download.inep.gov.br/microdados/microdados_educacao_basica_{year}.zip"
+    if year == "2020":
+        url = "https://download.inep.gov.br/dados_abertos/microdados_censo_escolar_2020.zip"
+    elif year in "2019 2018":
+        url = f"https://download.inep.gov.br/microdados/microdados_educacao_basica_{year}.zip"
     else:
-        return f"https://download.inep.gov.br/microdados/micro_censo_escolar_{year}.zip"
+        url = f"https://download.inep.gov.br/microdados/micro_censo_escolar_{year}.zip"
+
+    return url
+
+
+def make_request(url):
+    with requests.get(url, stream=True) as r:
+        r.raise_for_status()
+        with open(f"{year}.zip", 'wb') as f:
+            for chunk in r.iter_content(chunk_size=8192):
+                f.write(chunk)
+
+
+def test_zip(year):
+    ZipFile(f"{year}.zip", 'r')
 
 
 def download_file(year):
     url = get_url(year)
     print(f"Downloading {url}")
-    with requests.get(url, stream=True) as r:
-        r.raise_for_status()
-        with open("file.zip", 'wb') as f:
-            for chunk in r.iter_content(chunk_size=8192):
-                # If you have chunk encoded response uncomment if
-                # and set chunk_size parameter to None.
-                #if chunk:
-                f.write(chunk)
+    try:
+        make_request(url)
+        test_zip(year)
+    except (requests.exceptions.ChunkedEncodingError, BadZipfile) as e:
+        sleep(20)
+        try:
+            if f"{year}.zip" in os.listdir():
+                os.remove(f"{year}.zip")
+            make_request(url)
+            test_zip(year)
+        except Exception as e:
+            raise Exception(f"Download error: {e}")
+    except Exception as e:
+        raise Exception(f"Download error: {e}")
+
     print("Download complete")
 
 
@@ -66,6 +77,14 @@ def unzip_file(year):
     print(f"Unziping")
     with ZipFile(f"{year}.zip", 'r') as zip:
         zip.extractall()
+    #os.remove(f"{year}.zip")
+
+    recursives_zips = [file for file in glob(f"*{year}/DADOS/*")
+                       if ".rar" in file]
+    for recursive_zip_names in recursives_zips:
+        patoolib.extract_archive(f"{year}/DADOS/{recursive_zip_names}", outdir=f"{year}/DADOS")
+        os.remove(f"{year}/DADOS/{recursive_zip_names}")
+
     print("Unzip complete")
 
 # def check_files():
@@ -74,31 +93,49 @@ def unzip_file(year):
 #         md5(file).hexdigest()
 
 
-def csv_to_parquet(compression):
-    start_time = time.time()
-    for file in glob("./microdados_educacao_basica_2019/DADOS/*.CSV"):
-        parquet_name = f"{compression}/" + re.search("DADOS\/(.*)\.", file).group(1) + ".parquet"
+def convert_object_columns_to_str(df):
+    object_columns = [column for column, dtype in
+                      list(zip(df.dtypes.index,  df.dtypes))
+                      if dtype == object]
+
+    df[object_columns] = df[object_columns].astype(str)
+
+    return df
+
+
+def csv_to_parquet(year, compression):
+    for file in glob(f"*{year}/DADOS/*.CSV"):
+        parquet_name = f"{year}_" + re.search("DADOS\/(.*)\.", file).group(1) + ".parquet"
         pqwriter = None
-        for i, df in enumerate(pd.read_csv(file, chunksize=CHUNCKSIZE)):
-            table = pa.Table.from_pandas(df)
-            # for the first chunk of records
-            if i == 0:
-                # create a parquet write object giving it an output file
-                pqwriter = pq.ParquetWriter(parquet_name, table.schema, compression=compression)
-            pqwriter.write_table(table)
+        schema = None
+        for i, df in enumerate(pd.read_csv(file, chunksize=CHUNCKSIZE, encoding="latin1", sep="|")):
+            df = convert_object_columns_to_str(df)
+            try:
+                if schema:
+                    table = pa.Table.from_pandas(df, schema=schema)
+                else:
+                    table = pa.Table.from_pandas(df)
+                    schema = table.schema
+                if i == 0:
+                    pqwriter = pq.ParquetWriter(parquet_name, table.schema, compression=compression)
+                pqwriter.write_table(table)
+            except pa.ArrowTypeError as e:
+                print("aqui")
 
         # close the parquet writer
         if pqwriter:
             pqwriter.close()
         print(f"{parquet_name} criado")
 
-    print("\n\n")
-    print(compression)
-    print("--- %s seconds ---" % (time.time() - start_time))
 
-# def upload_files():
-#     for file in glob("./*.parquet"):
-#         cl
+def upload_files(year):
+    for file in glob(f"*{year}/DADOS/*.CSV"):
+        print(file)
+        client = storage.Client.from_service_account_json(json_credentials_path=CREDENTIALS)
+        bucket = client.get_bucket(BUCKET)
+        csv_name = re.search("DADOS\/(.*)\.", file).group(1) + ".csv"
+        blob = bucket.blob(f"censo-escolar/{year}/{csv_name}")
+        blob.upload_from_filename(file)
 
 
 if __name__ == "__main__":
@@ -106,6 +143,7 @@ if __name__ == "__main__":
     compression = "snappy"
     download_file(year)
     unzip_file(year)
-    #csv_to_parquet(compression)
+    #csv_to_parquet(year, compression)
+    upload_files(year)
 
 

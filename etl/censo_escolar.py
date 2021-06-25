@@ -3,13 +3,6 @@ from airflow.utils.task_group import TaskGroup
 from airflow import DAG
 from airflow.models import Variable
 
-from google.cloud.container_v1.types import (
-    Cluster,
-    ClusterAutoscaling,
-    VerticalPodAutoscaling,
-    ResourceLimit,
-    NodeConfig
-)
 from airflow.providers.google.cloud.operators.kubernetes_engine import (
     GKECreateClusterOperator,
     GKEDeleteClusterOperator,
@@ -17,36 +10,44 @@ from airflow.providers.google.cloud.operators.kubernetes_engine import (
 )
 
 
-BUCKET_BRONZE = Variable.get("BUCKET_BRONZE")
-BUCKET_SILVER = Variable.get("BUCKET_SILVER")
-BUCKET_GOLD = Variable.get("BUCKET_GOLD")
-PROJECT = Variable.get("PROJECT")
-FIRST_YEAR = int(Variable.get("FIRST_YEAR"))
-LAST_YEAR = int(Variable.get("LAST_YEAR"))
+BUCKET_BRONZE = Variable.make_request("BUCKET_BRONZE")
+BUCKET_SILVER = Variable.make_request("BUCKET_SILVER")
+BUCKET_GOLD = Variable.make_request("BUCKET_GOLD")
+PROJECT = Variable.make_request("PROJECT")
+FIRST_YEAR = int(Variable.make_request("FIRST_YEAR"))
+LAST_YEAR = int(Variable.make_request("LAST_YEAR"))
 YEARS = list(range(FIRST_YEAR, LAST_YEAR+1))
 
 
-def get_cluster_extract():
-    cpu = ResourceLimit(resource_type="cpu", maximum=4, minimum=1)
-    memory = ResourceLimit(resource_type="memory", maximum=8, minimum=1)
+def get_cluster_config():
+    cpu = {
+        "resourceType": "cpu",
+        "minimum": "4",
+        "maximum": "1"
+    }
+    memory = {
+        "resourceType": "memory",
+        "minimum": "4",
+        "maximum": "16"
+    }
 
-    cluster_auto_scaling = ClusterAutoscaling(
-        enable_node_autoprovisioning=True,
-        resource_limits=[cpu, memory]
-    )
+    cluster_auto_scaling = {
+        "resourceLimits": [cpu, memory],
+        "enableNodeAutoprovisioning": True
+    }
+    vertical_pod_autoscaling = {"enabled": True}
 
-    vertical_pod_autoscaling = VerticalPodAutoscaling(enabled=True)
+    node_config = {"oauthScopes": ["https://www.googleapis.com/auth/cloud-platform"]}
 
-    cluster_extract = Cluster(
-        name="extract-files",
-        initial_node_count=1,
-        autoscaling=cluster_auto_scaling,
-        vertical_pod_autoscaling=vertical_pod_autoscaling,
-        location="us-central1-a",
-        node_config=NodeConfig(oauth_scopes=["https://www.googleapis.com/auth/devstorage.read_only"])
-    )
-
-    return cluster_extract
+    cluster_config = {
+        "name": "extract-cluster",
+        "initialNodeCount": 3,
+        "autoscaling": cluster_auto_scaling,
+        "verticalPodAutoscaling": vertical_pod_autoscaling,
+        "location": "us-central1-a",
+        "nodeConfig": node_config
+    }
+    return cluster_config
 
 
 args = {
@@ -65,7 +66,7 @@ create_gke_cluster = GKECreateClusterOperator(
     task_id='create-cluster',
     project_id=PROJECT,
     location="us-central1-a",
-    body=get_cluster_extract(),
+    body=get_cluster_config(),
     dag=dag
 )
 
