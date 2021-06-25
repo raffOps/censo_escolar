@@ -59,7 +59,7 @@ def download_file(year):
         make_request(url)
         test_zip(year)
     except (requests.exceptions.ChunkedEncodingError, BadZipfile) as e:
-        sleep(20)
+        sleep(100)
         try:
             if f"{year}.zip" in os.listdir():
                 os.remove(f"{year}.zip")
@@ -144,6 +144,6 @@ if __name__ == "__main__":
     download_file(year)
     unzip_file(year)
     #csv_to_parquet(year, compression)
-    upload_files(year)
+    #upload_files(year)
 
 
