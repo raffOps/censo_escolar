@@ -111,7 +111,7 @@ def check_files(**context):
     years_in_bucket = set([int(blob.name.split("/")[1])
                            for blob in list(bucket.list_blobs(prefix="censo-escolar"))]
                           )
-    years_not_in_bucket = YEARS - years_in_bucket
+    years_not_in_bucket = " ".join(list(YEARS - years_in_bucket))
     if years_not_in_bucket:
         ti.xcom_push(key="years_not_in_bucket", value=years_not_in_bucket)
         return "create-gke-cluster"
@@ -161,7 +161,7 @@ with DAG(dag_id="censo-escolar", default_args=args, start_date=days_ago(2)) as d
     with TaskGroup(group_id="extract-files") as extract_files:
         years_not_in_bronze_bucket = '{{ ti.xcom_pull(task_ids="check-bronze-bucket", key="years_not_in_bucket") }}'
         for year in YEARS:
-            if year not in years_not_in_bronze_bucket:
+            if str(year) not in years_not_in_bronze_bucket:
                 extract_file = GKEStartPodOperator(
                     task_id=f"extract-file-{year}",
                     project_id=PROJECT,
