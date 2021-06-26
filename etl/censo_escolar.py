@@ -28,7 +28,7 @@ BUCKET_GOLD = Variable.get("BUCKET_GOLD")
 PROJECT = Variable.get("PROJECT")
 FIRST_YEAR = int(Variable.get("FIRST_YEAR"))
 LAST_YEAR = int(Variable.get("LAST_YEAR"))
-YEARS = list(range(FIRST_YEAR, LAST_YEAR + 1))
+YEARS = set(range(FIRST_YEAR, LAST_YEAR + 1))
 
 
 def get_cluster_config():
@@ -98,12 +98,12 @@ def check_files(**context):
     ti = context["ti"]
     client = storage.Client()
     bucket = client.get_bucket(BUCKET_BRONZE)
-    years = " ".join(set([blob.name.split("/")[1]
-                          for blob in list(bucket.list_blobs(prefix="censo-escolar"))]
-                         )
-                     )
-    if years:
-        ti.xcom_push(key="folders_in_bronze_bucket", value=years)
+    years_in_bucket = set([int(blob.name.split("/")[1])
+                           for blob in list(bucket.list_blobs(prefix="censo-escolar"))]
+                          )
+    years_not_in_bucket = list(YEARS - years_in_bucket)
+    if years_not_in_bucket:
+        ti.xcom_push(key="years_not_in_bucket", value=years_not_in_bucket)
         return "create-gke-cluster"
     else:
         return "check-silver-bucket"
@@ -149,27 +149,27 @@ with DAG(dag_id="censo-escolar", default_args=args, start_date=days_ago(2)) as d
     )
 
     with TaskGroup(group_id="extract-files") as extract_files:
-        folders_in_bronze_bucket = '{ ti.xcom_pull(task_ids="check-bronze-bucket", key="folders_in_bronze_bucket") }}'
-        for year in YEARS:
-            if str(year) not in folders_in_bronze_bucket:
-                extract_file = GKEStartPodOperator(
-                    task_id=f"extract-file-{year}",
-                    project_id=PROJECT,
-                    location="us-central1-a",
-                    cluster_name="extract-files",
-                    namespace="default",
-                    image=f"gcr.io/{PROJECT}/censo_escolar:latest",
-                    arguments=["sh", "-c", f'python extract.py {year}'],
-                    env_vars={
-                        "BUCKET": BUCKET_BRONZE,
-                        "GOOGLE_APPLICATION_CREDENTIALS": "/var/secrets/google/service-account.json"
-                    },
-                    secrets=[get_secret()],
-                    name=f"extract-file-{year}",
-                    on_failure_callback=extract_file_error_callback,
-                    get_logs=True,
-                    #is_delete_operator_pod=True,
-                )
+        years_not_in_bronze_bucket = '{ ti.xcom_pull(task_ids="check-bronze-bucket", key="years_not_in_bucket") }}'
+        years_not_in_bronze_bucket = json.loads(years_not_in_bronze_bucket)
+        for year in years_not_in_bronze_bucket:
+            extract_file = GKEStartPodOperator(
+                task_id=f"extract-file-{year}",
+                project_id=PROJECT,
+                location="us-central1-a",
+                cluster_name="extract-files",
+                namespace="default",
+                image=f"gcr.io/{PROJECT}/censo_escolar:latest",
+                arguments=["sh", "-c", f'python extract.py {year}'],
+                env_vars={
+                    "BUCKET": BUCKET_BRONZE,
+                    "GOOGLE_APPLICATION_CREDENTIALS": "/var/secrets/google/service-account.json"
+                },
+                secrets=[get_secret()],
+                name=f"extract-file-{year}",
+                on_failure_callback=extract_file_error_callback,
+                get_logs=True,
+                #is_delete_operator_pod=True,
+            )
 
     destroy_gke_cluster = GKEDeleteClusterOperator(
         task_id="delete-gke-cluster",
