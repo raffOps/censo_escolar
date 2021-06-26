@@ -5,6 +5,13 @@ from airflow.models import Variable
 from airflow.operators.dummy import DummyOperator
 from airflow.operators.python import BranchPythonOperator, PythonOperator
 from airflow.kubernetes.secret import Secret
+from google.cloud.container_v1.types import (
+    Cluster,
+    ClusterAutoscaling,
+    VerticalPodAutoscaling,
+    ResourceLimit,
+    NodeConfig
+)
 from airflow.providers.google.cloud.operators.kubernetes_engine import (
     GKECreateClusterOperator,
     GKEDeleteClusterOperator,
@@ -23,34 +30,57 @@ YEARS = list(range(FIRST_YEAR, LAST_YEAR + 1))
 
 
 def get_cluster_config():
-    cpu = {
-        "resourceType": "cpu",
-        "minimum": "1",
-        "maximum": "6"
-    }
-    memory = {
-        "resourceType": "memory",
-        "minimum": "4",
-        "maximum": "24"
-    }
+    cpu = ResourceLimit(resource_type="cpu", maximum=6, minimum=1)
+    memory = ResourceLimit(resource_type="memory", maximum=24, minimum=4)
 
-    cluster_auto_scaling = {
-        "resourceLimits": [cpu, memory],
-        "enableNodeAutoprovisioning": True
-    }
-    vertical_pod_autoscaling = {"enabled": True}
+    cluster_auto_scaling = ClusterAutoscaling(
+        enable_node_autoprovisioning=False,
+        resource_limits=[cpu, memory]
+    )
 
-    node_config = {"oauthScopes": ["https://www.googleapis.com/auth/cloud-platform"]}
+    vertical_pod_autoscaling = VerticalPodAutoscaling(enabled=True)
 
-    cluster_config = {
-        "name": "extract-cluster",
-        "initialNodeCount": 2,
-        "autoscaling": cluster_auto_scaling,
-        "verticalPodAutoscaling": vertical_pod_autoscaling,
-        "location": "us-central1-a",
-        "nodeConfig": node_config
-    }
+    cluster_config = Cluster(
+        name="extract-cluster",
+        initial_node_count=1,
+        autoscaling=cluster_auto_scaling,
+        vertical_pod_autoscaling=vertical_pod_autoscaling,
+        location="us-central1-a",
+        node_config=NodeConfig(oauth_scopes=["https://www.googleapis.com/auth/cloud-platform"])
+    )
+
     return cluster_config
+
+
+# def get_cluster_config():
+#     cpu = {
+#         "resourceType": "cpu",
+#         "minimum": "1",
+#         "maximum": "6"
+#     }
+#     memory = {
+#         "resourceType": "memory",
+#         "minimum": "4",
+#         "maximum": "24"
+#     }
+#
+#     cluster_auto_scaling = {
+#         "resourceLimits": [cpu, memory],
+#         "enableNodeAutoprovisioning": True
+#     }
+#     vertical_pod_autoscaling = {"enabled": True}
+#
+#     node_config = {"oauthScopes": ["https://www.googleapis.com/auth/cloud-platform"]}
+#
+#     cluster_config = {
+#         "name": "extract-cluster",
+#         "initialNodeCount": 2,
+#         "autoscaling": cluster_auto_scaling,
+#         "verticalPodAutoscaling": vertical_pod_autoscaling,
+#         "location": "us-central1-a",
+#         "nodeConfig": node_config
+#     }
+#     return cluster_config
 
 
 def get_secret():
