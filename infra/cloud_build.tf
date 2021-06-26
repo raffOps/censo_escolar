@@ -2,7 +2,7 @@ resource "google_cloudbuild_trigger" "git_sync" {
   name = "git-sync"
   github {
     owner = var.git_user
-    name = "censo_escolar"
+    name = "etl_censo_escolar"
     push {
       branch = "dev"
     }

@@ -11,7 +11,6 @@ COPY requirements.txt .
 RUN pip install -r requirements.txt
 
 COPY extract.py .
-COPY key.json .
 
 #RUN chmod +x entrypoint.sh
 #ENTRYPOINT ["./git_sync.sh"]
