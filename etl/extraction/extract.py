@@ -80,10 +80,10 @@ def unzip_file(year):
     #os.remove(f"{year}.zip")
 
     recursives_zips = [file for file in glob(f"*{year}/DADOS/*")
-                       if ".rar" in file]
+                       if ".rar" in file or ".zip" in file]
     for recursive_zip_names in recursives_zips:
-        patoolib.extract_archive(f"{year}/DADOS/{recursive_zip_names}", outdir=f"{year}/DADOS")
-        os.remove(f"{year}/DADOS/{recursive_zip_names}")
+        patoolib.extract_archive(f"{recursive_zip_names}", outdir=f"{year}/DADOS")
+        os.remove(f"{recursive_zip_names}")
 
     print("Unzip complete")
 
@@ -129,10 +129,10 @@ def csv_to_parquet(year, compression):
 
 
 def upload_files(year):
+    client = storage.Client.from_service_account_json(json_credentials_path=CREDENTIALS)
+    bucket = client.get_bucket(BUCKET)
     for file in glob(f"*{year}/DADOS/*.CSV"):
         print(file)
-        client = storage.Client.from_service_account_json(json_credentials_path=CREDENTIALS)
-        bucket = client.get_bucket(BUCKET)
         csv_name = re.search("DADOS\/(.*)\.", file).group(1) + ".csv"
         blob = bucket.blob(f"censo-escolar/{year}/{csv_name}")
         blob.upload_from_filename(file)
@@ -144,6 +144,6 @@ if __name__ == "__main__":
     download_file(year)
     unzip_file(year)
     #csv_to_parquet(year, compression)
-    #upload_files(year)
+    upload_files(year)
 
 

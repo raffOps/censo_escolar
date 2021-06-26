@@ -10,6 +10,6 @@ output "bucket_gold" {
   value = google_storage_bucket.bucket-gold.url
 }
 
-//output "composer" {
-//  value = google_composer_environment.composer.config[0].airflow_uri
-//}
+output "composer" {
+  value = google_composer_environment.composer.config[0].airflow_uri
+}
