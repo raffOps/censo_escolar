@@ -22,6 +22,8 @@ from airflow.providers.google.cloud.operators.kubernetes_engine import (
 
 from google.cloud import storage
 
+#if Variable.get("PROJECT"):
+
 BUCKET_BRONZE = Variable.get("BUCKET_BRONZE")
 BUCKET_SILVER = Variable.get("BUCKET_SILVER")
 BUCKET_GOLD = Variable.get("BUCKET_GOLD")
@@ -29,6 +31,14 @@ PROJECT = Variable.get("PROJECT")
 FIRST_YEAR = int(Variable.get("FIRST_YEAR"))
 LAST_YEAR = int(Variable.get("LAST_YEAR"))
 YEARS = set(range(FIRST_YEAR, LAST_YEAR + 1))
+
+# BUCKET_BRONZE = "rjr-teste"
+# BUCKET_SILVER = "a"
+# BUCKET_GOLD = "a"
+# PROJECT = "rjr-portal-da-transparencia"
+# FIRST_YEAR = 2013
+# LAST_YEAR = 2014
+# YEARS = set(range(FIRST_YEAR, LAST_YEAR + 1))
 
 
 def get_cluster_config():
@@ -149,26 +159,27 @@ with DAG(dag_id="censo-escolar", default_args=args, start_date=days_ago(2)) as d
     )
 
     with TaskGroup(group_id="extract-files") as extract_files:
-        years_not_in_bronze_bucket = '{ ti.xcom_pull(task_ids="check-bronze-bucket", key="years_not_in_bucket") }}'
-        for year in years_not_in_bronze_bucket:
-            extract_file = GKEStartPodOperator(
-                task_id=f"extract-file-{year}",
-                project_id=PROJECT,
-                location="us-central1-a",
-                cluster_name="extract-files",
-                namespace="default",
-                image=f"gcr.io/{PROJECT}/censo_escolar:latest",
-                arguments=["sh", "-c", f'python extract.py {year}'],
-                env_vars={
-                    "BUCKET": BUCKET_BRONZE,
-                    "GOOGLE_APPLICATION_CREDENTIALS": "/var/secrets/google/service-account.json"
-                },
-                secrets=[get_secret()],
-                name=f"extract-file-{year}",
-                on_failure_callback=extract_file_error_callback,
-                get_logs=True,
-                #is_delete_operator_pod=True,
-            )
+        years_not_in_bronze_bucket = '{{ ti.xcom_pull(task_ids="check-bronze-bucket", key="years_not_in_bucket") }}'
+        for year in YEARS:
+            if year not in years_not_in_bronze_bucket:
+                extract_file = GKEStartPodOperator(
+                    task_id=f"extract-file-{year}",
+                    project_id=PROJECT,
+                    location="us-central1-a",
+                    cluster_name="extract-files",
+                    namespace="default",
+                    image=f"gcr.io/{PROJECT}/censo_escolar:latest",
+                    arguments=["sh", "-c", f'python extract.py {year}'],
+                    env_vars={
+                        "BUCKET": BUCKET_BRONZE,
+                        "GOOGLE_APPLICATION_CREDENTIALS": "/var/secrets/google/service-account.json"
+                    },
+                    secrets=[get_secret()],
+                    name=f"extract-file-{year}",
+                    on_failure_callback=extract_file_error_callback,
+                    get_logs=True,
+                    #is_delete_operator_pod=True,
+                )
 
     destroy_gke_cluster = GKEDeleteClusterOperator(
         task_id="delete-gke-cluster",
