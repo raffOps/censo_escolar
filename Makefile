@@ -17,14 +17,10 @@ docker:
 	  "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu \
 	  $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
 	sudo apt-get update
-	sudo apt-get install docker-ce docker-ce-cli containerd.io
+	sudo apt-get install docker-ce docker-compose docker-ce-cli containerd.io
 	sudo groupadd docker
 	sudo usermod -aG docker $USER
 	sudo docker run hello-world
-
-
-
-
 
 gcp:
 	sudo echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | tee -a /etc/apt/sources.list.d/google-cloud-sdk.list

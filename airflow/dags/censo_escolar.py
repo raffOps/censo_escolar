@@ -32,14 +32,6 @@ FIRST_YEAR = int(Variable.get("FIRST_YEAR"))
 LAST_YEAR = int(Variable.get("LAST_YEAR"))
 YEARS = set(range(FIRST_YEAR, LAST_YEAR + 1))
 
-# BUCKET_BRONZE = "rjr-teste"
-# BUCKET_SILVER = "a"
-# BUCKET_GOLD = "a"
-# PROJECT = "rjr-portal-da-transparencia"
-# FIRST_YEAR = 2013
-# LAST_YEAR = 2014
-# YEARS = set(range(FIRST_YEAR, LAST_YEAR + 1))
-
 
 def get_cluster_config():
     cpu = ResourceLimit(resource_type="cpu", maximum=6, minimum=1)
@@ -62,37 +54,6 @@ def get_cluster_config():
     )
 
     return cluster_config
-
-
-# def get_cluster_config():
-#     cpu = {
-#         "resourceType": "cpu",
-#         "minimum": "1",
-#         "maximum": "6"
-#     }
-#     memory = {
-#         "resourceType": "memory",
-#         "minimum": "4",
-#         "maximum": "24"
-#     }
-#
-#     cluster_auto_scaling = {
-#         "resourceLimits": [cpu, memory],
-#         "enableNodeAutoprovisioning": True
-#     }
-#     vertical_pod_autoscaling = {"enabled": True}
-#
-#     node_config = {"oauthScopes": ["https://www.googleapis.com/auth/cloud-platform"]}
-#
-#     cluster_config = {
-#         "name": "extract-cluster",
-#         "initialNodeCount": 2,
-#         "autoscaling": cluster_auto_scaling,
-#         "verticalPodAutoscaling": vertical_pod_autoscaling,
-#         "location": "us-central1-a",
-#         "nodeConfig": node_config
-#     }
-#     return cluster_config
 
 
 def get_secret():
