@@ -150,9 +150,8 @@ with DAG(dag_id="censo-escolar", default_args=args, start_date=days_ago(2)) as d
 
     with TaskGroup(group_id="extract-files") as extract_files:
         folders_in_bronze_bucket = '{ ti.xcom_pull(task_ids="check-bronze-bucket", key="folders_in_bronze_bucket") }}'
-        folders_in_bronze_bucket = json.loads(folders_in_bronze_bucket)
         for year in YEARS:
-            if year not in folders_in_bronze_bucket:
+            if str(year) not in folders_in_bronze_bucket:
                 extract_file = GKEStartPodOperator(
                     task_id=f"extract-file-{year}",
                     project_id=PROJECT,
