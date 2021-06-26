@@ -111,7 +111,7 @@ def check_files(**context):
     years_in_bucket = set([int(blob.name.split("/")[1])
                            for blob in list(bucket.list_blobs(prefix="censo-escolar"))]
                           )
-    years_not_in_bucket = list(YEARS - years_in_bucket)
+    years_not_in_bucket = YEARS - years_in_bucket
     if years_not_in_bucket:
         ti.xcom_push(key="years_not_in_bucket", value=years_not_in_bucket)
         return "create-gke-cluster"
