@@ -201,5 +201,5 @@ with DAG(dag_id="censo-escolar", default_args=args, start_date=days_ago(2)) as d
     check_extractions >> check_silver_bucket
 
     #check_bronze_bucket >> create_gke_cluster >> extract_files >> destroy_gke_cluster >> check_silver_bucket
-    check_bronze_bucket >> create_gke_cluster >> extract_files >> check_silver_bucket
+    #check_bronze_bucket >> create_gke_cluster >> extract_files >> check_silver_bucket
     check_bronze_bucket >> check_silver_bucket
