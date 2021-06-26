@@ -1,3 +1,5 @@
+import json
+
 from airflow import DAG
 from airflow.utils.dates import days_ago
 from airflow.utils.task_group import TaskGroup
@@ -96,7 +98,10 @@ def check_files(**context):
     ti = context["ti"]
     client = storage.Client()
     bucket = client.get_bucket(BUCKET_BRONZE)
-    years = bucket.list_blobs(delimiter="/")
+    years = " ".join(set([blob.name.split("/")[1]
+                          for blob in list(bucket.list_blobs(prefix="censo-escolar"))]
+                         )
+                     )
     if years:
         ti.xcom_push(key="folders_in_bronze_bucket", value=years)
         return "create-gke-cluster"
@@ -145,6 +150,7 @@ with DAG(dag_id="censo-escolar", default_args=args, start_date=days_ago(2)) as d
 
     with TaskGroup(group_id="extract-files") as extract_files:
         folders_in_bronze_bucket = '{ ti.xcom_pull(task_ids="check-bronze-bucket", key="folders_in_bronze_bucket") }}'
+        folders_in_bronze_bucket = json.loads(folders_in_bronze_bucket)
         for year in YEARS:
             if year not in folders_in_bronze_bucket:
                 extract_file = GKEStartPodOperator(
