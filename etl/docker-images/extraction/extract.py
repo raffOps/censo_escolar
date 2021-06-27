@@ -131,6 +131,7 @@ def csv_to_parquet(year, compression):
 
 
 def upload_files(year):
+    print("Uploading files")
     client = storage.Client.from_service_account_json(json_credentials_path=CREDENTIALS)
     bucket = client.get_bucket(BUCKET)
     for file in glob(f"*{year}/DADOS/*.CSV"):
@@ -138,6 +139,8 @@ def upload_files(year):
         csv_name = re.search("DADOS\/(.*)\.", file).group(1) + ".csv"
         blob = bucket.blob(f"censo-escolar/{year}/{csv_name}")
         blob.upload_from_filename(file)
+
+    print("Upload complete")
 
 
 if __name__ == "__main__":
