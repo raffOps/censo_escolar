@@ -52,7 +52,7 @@ def get_cluster_config():
         initial_node_count=nodes,
         autoscaling=cluster_auto_scaling,
         vertical_pod_autoscaling=vertical_pod_autoscaling,
-        location="us-central1-a",
+        location="southamerica-east1-a",
         node_config=NodeConfig(oauth_scopes=["https://www.googleapis.com/auth/cloud-platform"])
     )
 
@@ -124,7 +124,7 @@ with DAG(dag_id="censo-escolar", default_args=args, start_date=days_ago(2)) as d
     create_gke_cluster = GKECreateClusterOperator(
         task_id='create-gke-cluster',
         project_id=PROJECT,
-        location="us-central1-a",
+        location="southamerica-east1-a",
         body=get_cluster_config()
     )
 
@@ -160,7 +160,7 @@ with DAG(dag_id="censo-escolar", default_args=args, start_date=days_ago(2)) as d
         task_id="destroy-gke-cluster",
         name="extraction-cluster",
         project_id=PROJECT,
-        location="us-central1-a"
+        location="southamerica-east1-a"
     )
     #
     check_extractions = BranchPythonOperator(
