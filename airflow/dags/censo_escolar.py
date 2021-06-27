@@ -116,8 +116,7 @@ with DAG(dag_id="censo-escolar", default_args=args, start_date=days_ago(2)) as d
         task_id='create-gke-cluster',
         project_id=PROJECT,
         location="us-central1-a",
-        body=get_cluster_config(),
-        secrets=[get_secret()]
+        body=get_cluster_config()
     )
 
     with TaskGroup(group_id="extract-files") as extract_files:
