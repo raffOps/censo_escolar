@@ -45,12 +45,12 @@ def get_cluster_config():
     )
 
     vertical_pod_autoscaling = VerticalPodAutoscaling(enabled=True)
-    years_not_in_bronze_bucket = '{{ ti.xcom_pull(task_ids="check-bronze-bucket", key="years_not_in_bucket") }}'
-    nodes = int(len(years_not_in_bronze_bucket.split()) / 2) + 3
+    # years_not_in_bronze_bucket = '{{ ti.xcom_pull(task_ids="check-bronze-bucket", key="years_not_in_bucket") }}'
+    # nodes = int(len(years_not_in_bronze_bucket.split()) / 2) + 3
 
     cluster_config = Cluster(
         name="extraction-cluster",
-        initial_node_count=nodes,
+        initial_node_count=3,
         autoscaling=cluster_auto_scaling,
         vertical_pod_autoscaling=vertical_pod_autoscaling,
         location="southamerica-east1-a",
