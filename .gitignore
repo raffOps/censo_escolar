@@ -190,3 +190,5 @@ etl/extraction/microdados_educacao_basica_2020/
 *.pdf
 
 etl/extraction/Microdados_Censo_Escolar_2017/DADOS/
+
+venv2/

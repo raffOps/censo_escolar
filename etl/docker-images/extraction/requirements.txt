@@ -13,6 +13,7 @@ idna==2.10
 numpy==1.21.0
 packaging==20.9
 pandas==1.2.5
+patool==1.12
 protobuf==3.17.3
 pyarrow==4.0.1
 pyasn1==0.4.8
