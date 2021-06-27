@@ -63,7 +63,6 @@ def get_cluster_config():
 def get_pod_resources():
     return V1ResourceRequirements(
         requests={
-            "storage": "40G",
             "cpu": "1",
             "memory": "2G"
         }
@@ -181,7 +180,7 @@ with DAG(dag_id="censo-escolar", default_args=args, start_date=days_ago(2)) as d
     )
 
     some_failed_extraction = PythonOperator(
-        task_id="some-failder-extration",
+        task_id="some-failer-extration",
         python_callable=raise_exception_operator
     )
 

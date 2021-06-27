@@ -192,3 +192,7 @@ etl/extraction/microdados_educacao_basica_2020/
 etl/extraction/Microdados_Censo_Escolar_2017/DADOS/
 
 venv2/
+
+etl/docker-images/extraction/2014/DADOS/
+
+etl/docker-images/extraction/2014/
