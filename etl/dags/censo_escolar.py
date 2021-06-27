@@ -8,6 +8,7 @@ from airflow.operators.dummy import DummyOperator
 from airflow.operators.python import BranchPythonOperator, PythonOperator
 from airflow.operators.bash_operator import BashOperator
 from airflow.kubernetes.secret import Secret
+from kubernetes.client import V1ResourceRequirements
 from google.cloud.container_v1.types import (
     Cluster,
     ClusterAutoscaling,
@@ -35,8 +36,8 @@ YEARS = set(range(FIRST_YEAR, LAST_YEAR + 1))
 
 
 def get_cluster_config():
-    cpu = ResourceLimit(resource_type="cpu", maximum=4, minimum=1)
-    memory = ResourceLimit(resource_type="memory", maximum=8, minimum=4)
+    cpu = ResourceLimit(resource_type="cpu", maximum=13, minimum=1)
+    memory = ResourceLimit(resource_type="memory", maximum=30, minimum=4)
 
     cluster_auto_scaling = ClusterAutoscaling(
         enable_node_autoprovisioning=True,
@@ -45,7 +46,7 @@ def get_cluster_config():
 
     vertical_pod_autoscaling = VerticalPodAutoscaling(enabled=True)
     years_not_in_bronze_bucket = '{{ ti.xcom_pull(task_ids="check-bronze-bucket", key="years_not_in_bucket") }}'
-    nodes = int(len(years_not_in_bronze_bucket.split()) / 2) + 1
+    nodes = int(len(years_not_in_bronze_bucket.split()) / 2) + 3
 
     cluster_config = Cluster(
         name="extraction-cluster",
@@ -58,6 +59,15 @@ def get_cluster_config():
 
     return cluster_config
 
+
+def get_pod_resources():
+    return V1ResourceRequirements(
+        requests={
+            "storage": "40G",
+            "cpu": "1",
+            "memory": "2G"
+        }
+    )
 
 # def get_create_secret_cmd():
 #     return f"gcloud container clusters get-credentials extraction-cluster --zone us-central1-a --project {PROJECT} && " + \
@@ -149,6 +159,7 @@ with DAG(dag_id="censo-escolar", default_args=args, start_date=days_ago(2)) as d
                         "BUCKET": BUCKET_BRONZE,
                         "GOOGLE_APPLICATION_CREDENTIALS": "/var/secrets/google/key.json"
                     },
+                    resources=get_pod_resources(),
                 #    secrets=[get_secret()],
                     name=f"extract-file-{year}",
                     on_failure_callback=extract_file_error_callback,

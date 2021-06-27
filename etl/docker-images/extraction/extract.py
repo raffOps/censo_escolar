@@ -79,7 +79,7 @@ def unzip_file(year):
     print(f"Unziping")
     with ZipFile(f"{year}.zip", 'r') as zip:
         zip.extractall()
-    #os.remove(f"{year}.zip")
+    os.remove(f"{year}.zip")
 
     recursives_zips = [file for file in glob(f"*{year}/DADOS/*")
                        if ".rar" in file or ".zip" in file]
