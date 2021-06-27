@@ -50,7 +50,7 @@ def get_cluster_config():
 
     cluster_config = Cluster(
         name="extraction-cluster",
-        #initial_node_count=3,
+        initial_node_count=3,
         autoscaling=cluster_auto_scaling,
         vertical_pod_autoscaling=vertical_pod_autoscaling,
         location="southamerica-east1-a",
