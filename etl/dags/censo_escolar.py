@@ -124,18 +124,18 @@ args = {
 
 with DAG(dag_id="censo-escolar", default_args=args, start_date=days_ago(2)) as dag:
 
-    check_bronze_bucket = BranchPythonOperator(
-        task_id="check-bronze-bucket",
-        python_callable=check_files,
-        provide_context=True
-    )
-    #
-    create_gke_cluster = GKECreateClusterOperator(
-        task_id='create-gke-cluster',
-        project_id=PROJECT,
-        location="southamerica-east1-a",
-        body=get_cluster_config()
-    )
+    # check_bronze_bucket = BranchPythonOperator(
+    #     task_id="check-bronze-bucket",
+    #     python_callable=check_files,
+    #     provide_context=True
+    # )
+    # #
+    # create_gke_cluster = GKECreateClusterOperator(
+    #     task_id='create-gke-cluster',
+    #     project_id=PROJECT,
+    #     location="southamerica-east1-a",
+    #     body=get_cluster_config()
+    # )
 
     # create_cluster_secret = BashOperator(
     #     task_id="create-cluster-secret",
@@ -166,35 +166,35 @@ with DAG(dag_id="censo-escolar", default_args=args, start_date=days_ago(2)) as d
                     startup_timeout_seconds=300
                     #is_delete_operator_pod=True,
                 )
-    
-    destroy_gke_cluster = GKEDeleteClusterOperator(
-        task_id="destroy-gke-cluster",
-        name="extraction-cluster",
-        project_id=PROJECT,
-        location="southamerica-east1-a"
-    )
     #
-    check_extractions = BranchPythonOperator(
-        task_id="check-extractions",
-        python_callable=check_extraction,
-        provide_context=True
-    )
+    # destroy_gke_cluster = GKEDeleteClusterOperator(
+    #     task_id="destroy-gke-cluster",
+    #     name="extraction-cluster",
+    #     project_id=PROJECT,
+    #     location="southamerica-east1-a"
+    # )
+    # #
+    # check_extractions = BranchPythonOperator(
+    #     task_id="check-extractions",
+    #     python_callable=check_extraction,
+    #     provide_context=True
+    # )
+    #
+    # some_failed_extraction = PythonOperator(
+    #     task_id="some-failer-extration",
+    #     python_callable=raise_exception_operator
+    # )
+    #
+    # check_silver_bucket = DummyOperator(
+    #     task_id="check-silver-bucket"
+    # )
 
-    some_failed_extraction = PythonOperator(
-        task_id="some-failer-extration",
-        python_callable=raise_exception_operator
-    )
+    # check_bronze_bucket >> create_gke_cluster >> extract_files >> destroy_gke_cluster
+    extract_files
+    # check_extractions >> some_failed_extraction
+    # check_extractions >> check_silver_bucket
 
-    check_silver_bucket = DummyOperator(
-        task_id="check-silver-bucket"
-    )
-
-    check_bronze_bucket >> create_gke_cluster >> extract_files >> destroy_gke_cluster
-    extract_files >> check_extractions
-    check_extractions >> some_failed_extraction
-    check_extractions >> check_silver_bucket
-
-    check_bronze_bucket >> check_silver_bucket
+    # check_bronze_bucket >> check_silver_bucket
     #
     # extract_files >> check_extractions
     # check_extractions >> some_failed_extraction
