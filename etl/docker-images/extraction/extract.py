@@ -23,10 +23,12 @@ if os.getenv("BUCKET"):
 else:
     BUCKET = "rjr-teste"
 
-if os.getenv("GOOGLE_APPLICATION_CREDENTIALS"):
-    CREDENTIALS = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
-else:
-    CREDENTIALS = "key.json"
+# if os.getenv("GOOGLE_APPLICATION_CREDENTIALS"):
+#     CREDENTIALS = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+# else:
+#     CREDENTIALS = "key.json"
+
+CREDENTIALS = "key.json"
 
 
 def get_url(year):
