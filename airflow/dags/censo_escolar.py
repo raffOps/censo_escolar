@@ -60,7 +60,7 @@ def get_secret():
     secret = Secret(
         deploy_type='volume',
         deploy_target='/var/secrets/google',
-        secret='service-account-extracao',
+        secret='service-account',
         key='service-account.json')
     return secret
 
@@ -106,18 +106,18 @@ args = {
 
 with DAG(dag_id="censo-escolar", default_args=args, start_date=days_ago(2)) as dag:
 
-    check_bronze_bucket = BranchPythonOperator(
-        task_id="check-bronze-bucket",
-        python_callable=check_files,
-        provide_context=True
-    )
-
-    create_gke_cluster = GKECreateClusterOperator(
-        task_id='create-gke-cluster',
-        project_id=PROJECT,
-        location="us-central1-a",
-        body=get_cluster_config(),
-    )
+    # check_bronze_bucket = BranchPythonOperator(
+    #     task_id="check-bronze-bucket",
+    #     python_callable=check_files,
+    #     provide_context=True
+    # )
+    #
+    # create_gke_cluster = GKECreateClusterOperator(
+    #     task_id='create-gke-cluster',
+    #     project_id=PROJECT,
+    #     location="us-central1-a",
+    #     body=get_cluster_config(),
+    # )
 
     with TaskGroup(group_id="extract-files") as extract_files:
         years_not_in_bronze_bucket = '{{ ti.xcom_pull(task_ids="check-bronze-bucket", key="years_not_in_bucket") }}'
@@ -164,9 +164,14 @@ with DAG(dag_id="censo-escolar", default_args=args, start_date=days_ago(2)) as d
         task_id="check-silver-bucket"
     )
 
-    check_bronze_bucket >> create_gke_cluster >> extract_files >> destroy_gke_cluster
+    # check_bronze_bucket >> create_gke_cluster >> extract_files >> destroy_gke_cluster
+    # extract_files >> check_extractions
+    # check_extractions >> some_failed_extraction
+    # check_extractions >> check_silver_bucket
+    #
+    # check_bronze_bucket >> check_silver_bucket
+
     extract_files >> check_extractions
     check_extractions >> some_failed_extraction
     check_extractions >> check_silver_bucket
 
-    check_bronze_bucket >> check_silver_bucket
