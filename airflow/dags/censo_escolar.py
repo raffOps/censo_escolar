@@ -6,6 +6,7 @@ from airflow.utils.task_group import TaskGroup
 from airflow.models import Variable
 from airflow.operators.dummy import DummyOperator
 from airflow.operators.python import BranchPythonOperator, PythonOperator
+from airflow.operators.bash_operator import BashOperator
 from airflow.kubernetes.secret import Secret
 from google.cloud.container_v1.types import (
     Cluster,
@@ -56,12 +57,18 @@ def get_cluster_config():
     return cluster_config
 
 
+def get_create_secret_cmd():
+    return f"gcloud container clusters get-credentials extraction-cluster --zone us-central1-a --project {PROJECT} && " + \
+           f"gcloud iam service-accounts keys create key.json --iam-account=etl-service-account@{PROJECT}.iam.gserviceaccount.com && " + \
+           f"kubectl create secret generic gcs-credentials --from-file key.json"
+
+
 def get_secret():
     secret = Secret(
         deploy_type='volume',
         deploy_target='/var/secrets/google',
-        secret='service-account',
-        key='service-account.json')
+        secret='gcs-credentials',
+        key='key.json')
     return secret
 
 
@@ -119,6 +126,11 @@ with DAG(dag_id="censo-escolar", default_args=args, start_date=days_ago(2)) as d
         body=get_cluster_config()
     )
 
+    create_secret = BashOperator(
+        task_id="create-secret-cluster",
+        bash_command=get_create_secret_cmd()
+    )
+
     with TaskGroup(group_id="extract-files") as extract_files:
         years_not_in_bronze_bucket = '{{ ti.xcom_pull(task_ids="check-bronze-bucket", key="years_not_in_bucket") }}'
         for year in YEARS:
@@ -133,7 +145,7 @@ with DAG(dag_id="censo-escolar", default_args=args, start_date=days_ago(2)) as d
                     arguments=["sh", "-c", f'python extract.py {year}'],
                     env_vars={
                         "BUCKET": BUCKET_BRONZE,
-                        "GOOGLE_APPLICATION_CREDENTIALS": "/var/secrets/google/service-account.json"
+                        "GOOGLE_APPLICATION_CREDENTIALS": "/var/secrets/google/key.json"
                     },
                     secrets=[get_secret()],
                     name=f"extract-file-{year}",
@@ -164,7 +176,7 @@ with DAG(dag_id="censo-escolar", default_args=args, start_date=days_ago(2)) as d
         task_id="check-silver-bucket"
     )
 
-    check_bronze_bucket >> create_gke_cluster >> extract_files >> destroy_gke_cluster
+    check_bronze_bucket >> create_gke_cluster >> create_secret >> extract_files >> destroy_gke_cluster
     extract_files >> check_extractions
     check_extractions >> some_failed_extraction
     check_extractions >> check_silver_bucket
