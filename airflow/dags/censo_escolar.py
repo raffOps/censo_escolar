@@ -34,18 +34,18 @@ YEARS = set(range(FIRST_YEAR, LAST_YEAR + 1))
 
 
 def get_cluster_config():
-    cpu = ResourceLimit(resource_type="cpu", maximum=6, minimum=1)
-    memory = ResourceLimit(resource_type="memory", maximum=24, minimum=4)
+    cpu = ResourceLimit(resource_type="cpu", maximum=4, minimum=1)
+    memory = ResourceLimit(resource_type="memory", maximum=8, minimum=4)
 
     cluster_auto_scaling = ClusterAutoscaling(
-        enable_node_autoprovisioning=False,
+        enable_node_autoprovisioning=True,
         resource_limits=[cpu, memory]
     )
 
     vertical_pod_autoscaling = VerticalPodAutoscaling(enabled=True)
 
     cluster_config = Cluster(
-        name="extract-cluster",
+        name="extraction-cluster",
         initial_node_count=1,
         autoscaling=cluster_auto_scaling,
         vertical_pod_autoscaling=vertical_pod_autoscaling,
@@ -72,7 +72,7 @@ def check_files(**context):
     years_in_bucket = set([int(blob.name.split("/")[1])
                            for blob in list(bucket.list_blobs(prefix="censo-escolar"))]
                           )
-    years_not_in_bucket = " ".join(list(YEARS - years_in_bucket))
+    years_not_in_bucket = " ".join(str(year) for year in (YEARS - years_in_bucket))
     if years_not_in_bucket:
         ti.xcom_push(key="years_not_in_bucket", value=years_not_in_bucket)
         return "create-gke-cluster"
@@ -106,19 +106,19 @@ args = {
 
 with DAG(dag_id="censo-escolar", default_args=args, start_date=days_ago(2)) as dag:
 
-    check_bronze_bucket = BranchPythonOperator(
-        task_id="check-bronze-bucket",
-        python_callable=check_files,
-        provide_context=True,
-    )
-
-    create_gke_cluster = GKECreateClusterOperator(
-        task_id='create-gke-cluster',
-        project_id=PROJECT,
-        location="us-central1-a",
-        body=get_cluster_config(),
-    )
-
+    # check_bronze_bucket = BranchPythonOperator(
+    #     task_id="check-bronze-bucket",
+    #     python_callable=check_files,
+    #     provide_context=True
+    # )
+    #
+    # create_gke_cluster = GKECreateClusterOperator(
+    #     task_id='create-gke-cluster',
+    #     project_id=PROJECT,
+    #     location="us-central1-a",
+    #     body=get_cluster_config(),
+    # )
+    #
     with TaskGroup(group_id="extract-files") as extract_files:
         years_not_in_bronze_bucket = '{{ ti.xcom_pull(task_ids="check-bronze-bucket", key="years_not_in_bucket") }}'
         for year in YEARS:
@@ -127,7 +127,7 @@ with DAG(dag_id="censo-escolar", default_args=args, start_date=days_ago(2)) as d
                     task_id=f"extract-file-{year}",
                     project_id=PROJECT,
                     location="us-central1-a",
-                    cluster_name="extract-files",
+                    cluster_name="extraction-cluster",
                     namespace="default",
                     image=f"gcr.io/{PROJECT}/censo_escolar:latest",
                     arguments=["sh", "-c", f'python extract.py {year}'],
@@ -138,39 +138,43 @@ with DAG(dag_id="censo-escolar", default_args=args, start_date=days_ago(2)) as d
                     secrets=[get_secret()],
                     name=f"extract-file-{year}",
                     on_failure_callback=extract_file_error_callback,
-                    get_logs=True,
+                    get_logs=True
                     #is_delete_operator_pod=True,
                 )
+    
+    # destroy_gke_cluster = GKEDeleteClusterOperator(
+    #     task_id="delete-gke-cluster",
+    #     name="extraction-cluster",
+    #     project_id=PROJECT,
+    #     location="us-central1-a"
+    # )
+    #
+    # check_extractions = BranchPythonOperator(
+    #     task_id="check-extractions",
+    #     python_callable=check_extraction,
+    #     provide_context=True
+    # )
+    #
+    # some_failed_extraction = PythonOperator(
+    #     task_id="some-failder-extration",
+    #     python_callable=raise_exception_operator
+    # )
 
-    destroy_gke_cluster = GKEDeleteClusterOperator(
-        task_id="delete-gke-cluster",
-        name="extract-files",
-        project_id=PROJECT,
-        location="us-central1-a"
-    )
+    # check_silver_bucket = DummyOperator(
+    #     task_id="check-silver-bucket"
+    # )
 
-    check_extractions = BranchPythonOperator(
-        task_id="check-extractions",
-        python_callable=check_extraction,
-        provide_context=True
-    )
-
-    some_failed_extraction = PythonOperator(
-        task_id="some-failder-extration",
-        python_callable=raise_exception_operator
-    )
-
-    check_silver_bucket = DummyOperator(
-        task_id="check-silver-bucket"
-    )
-
-    check_bronze_bucket >> create_gke_cluster >> extract_files
-    extract_files >> destroy_gke_cluster
-    extract_files >> check_extractions
-
-    check_extractions >> some_failed_extraction
-    check_extractions >> check_silver_bucket
+    # check_bronze_bucket >> create_gke_cluster >> extract_files
+    # extract_files >> destroy_gke_cluster
+    # extract_files >> check_extractions
+    #
+    # check_extractions >> some_failed_extraction
+    # check_extractions >> check_silver_bucket
 
     #check_bronze_bucket >> create_gke_cluster >> extract_files >> destroy_gke_cluster >> check_silver_bucket
     #check_bronze_bucket >> create_gke_cluster >> extract_files >> check_silver_bucket
-    check_bronze_bucket >> check_silver_bucket
+    #check_bronze_bucket >> check_silver_bucket
+
+    #check_bronze_bucket >> create_gke_cluster >> extract_files >> check_extractions
+
+    extract_files

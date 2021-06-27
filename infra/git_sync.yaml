@@ -8,6 +8,6 @@ steps:
     - 'rsync'
     - '-d'
     - '-r'
-    - 'etl'
+    - 'airflow/dags'
     - '${_GCS_BUCKET}'
 
