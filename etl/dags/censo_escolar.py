@@ -140,7 +140,7 @@ with DAG(dag_id="censo-escolar", default_args=args, start_date=days_ago(2)) as d
                 extract_file = GKEStartPodOperator(
                     task_id=f"extract-file-{year}",
                     project_id=PROJECT,
-                    location="us-central1-a",
+                    location="southamerica-east1-a",
                     cluster_name="extraction-cluster",
                     namespace="default",
                     image=f"gcr.io/{PROJECT}/censo_escolar:latest",
