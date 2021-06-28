@@ -37,15 +37,15 @@ YEARS = set(range(FIRST_YEAR, LAST_YEAR + 1))
 
 
 def get_cluster_config():
-    cpu = ResourceLimit(resourceType="cpu", maximum=13, minimum=1)
-    memory = ResourceLimit(resourceType="memory", maximum=30, minimum=4)
+    cpu = ResourceLimit(resource_type="cpu", maximum=13, minimum=1)
+    memory = ResourceLimit(resource_type="memory", maximum=30, minimum=4)
 
-    node_pool_config = AutoprovisioningNodePoolDefaults(oauthScopes=["https://www.googleapis.com/auth/cloud-platform"])
+    node_pool_nap = AutoprovisioningNodePoolDefaults(oauth_scopes=["https://www.googleapis.com/auth/cloud-platform"])
 
     cluster_auto_scaling = ClusterAutoscaling(
-        enableNodeAutoprovisioning=True,
-        resourceLimits=[cpu, memory],
-        autoprovisioningNodePoolDefaults=node_pool_config
+        enable_node_autoprovisioning=True,
+        resource_limits=[cpu, memory],
+        autoprovisioning_node_pool_defaults=node_pool_nap
     )
 
     vertical_pod_autoscaling = VerticalPodAutoscaling(enabled=True)
@@ -54,9 +54,9 @@ def get_cluster_config():
         name="extraction-cluster",
         initialNodeCount=3,
         autoscaling=cluster_auto_scaling,
-        verticalPodAutoscaling=vertical_pod_autoscaling,
+        vertical_pod_autoscaling=vertical_pod_autoscaling,
         location="southamerica-east1-a",
-        nodeConfig=NodeConfig(oauthScopes=["https://www.googleapis.com/auth/cloud-platform"])
+        node_config=NodeConfig(oauth_scopes=["https://www.googleapis.com/auth/cloud-platform"])
     )
 
     return cluster_config
