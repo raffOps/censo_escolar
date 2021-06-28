@@ -146,9 +146,9 @@ def upload_files(year):
 if __name__ == "__main__":
     year = sys.argv[1]
     compression = "snappy"
-    download_file(year)
+    #download_file(year)
     unzip_file(year)
     #csv_to_parquet(year, compression)
-    upload_files(year)
+    #upload_files(year)
 
 

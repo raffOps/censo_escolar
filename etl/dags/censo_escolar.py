@@ -37,8 +37,8 @@ YEARS = set(range(FIRST_YEAR, LAST_YEAR + 1))
 
 
 def get_cluster_config():
-    cpu = ResourceLimit(resource_type="cpu", maximum=13, minimum=1)
-    memory = ResourceLimit(resource_type="memory", maximum=30, minimum=4)
+    cpu = ResourceLimit(resource_type="cpu", maximum=24, minimum=1)
+    memory = ResourceLimit(resource_type="memory", maximum=96, minimum=4)
 
     node_pool_nap = AutoprovisioningNodePoolDefaults(oauth_scopes=["https://www.googleapis.com/auth/cloud-platform"])
 
@@ -65,8 +65,12 @@ def get_cluster_config():
 def get_pod_resources():
     return V1ResourceRequirements(
         requests={
-            "cpu": "1",
-            "memory": "2G"
+            "cpu": "2",
+            "memory": "4G"
+        },
+        limits={
+            "cpu": "2",
+            "memory": "4G"
         }
     )
 
