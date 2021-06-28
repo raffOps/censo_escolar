@@ -137,10 +137,10 @@ with DAG(dag_id="censo-escolar", default_args=args, start_date=days_ago(2)) as d
         body=get_cluster_config()
     )
 
-    create_cluster_secret = BashOperator(
-        task_id="create-cluster-secret",
-        bash_command=get_create_secret_cmd()
-    )
+    # create_cluster_secret = BashOperator(
+    #     task_id="create-cluster-secret",
+    #     bash_command=get_create_secret_cmd()
+    # )
 
     with TaskGroup(group_id="extract-files") as extract_files:
         years_not_in_bronze_bucket = '{{ ti.xcom_pull(task_ids="check-bronze-bucket", key="years_not_in_bucket") }}'
