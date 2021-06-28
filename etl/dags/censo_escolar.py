@@ -65,12 +65,12 @@ def get_cluster_config():
 def get_pod_resources():
     return V1ResourceRequirements(
         requests={
-            "cpu": "2",
-            "memory": "4G"
+            "cpu": "1",
+            "memory": "6G"
         },
         limits={
-            "cpu": "2",
-            "memory": "4G"
+            "cpu": "1",
+            "memory": "6G"
         }
     )
 
