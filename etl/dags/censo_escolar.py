@@ -173,21 +173,21 @@ with DAG(dag_id="censo-escolar", default_args=args, start_date=days_ago(2)) as d
         project_id=PROJECT,
         location="southamerica-east1-a"
     )
+    # #
+    # check_extractions = BranchPythonOperator(
+    #     task_id="check-extractions",
+    #     python_callable=check_extraction,
+    #     provide_context=True
+    # )
     #
-    check_extractions = BranchPythonOperator(
-        task_id="check-extractions",
-        python_callable=check_extraction,
-        provide_context=True
-    )
-
-    some_failed_extraction = PythonOperator(
-        task_id="some-failer-extration",
-        python_callable=raise_exception_operator
-    )
-
-    check_silver_bucket = DummyOperator(
-        task_id="check-silver-bucket"
-    )
+    # some_failed_extraction = PythonOperator(
+    #     task_id="some-failer-extration",
+    #     python_callable=raise_exception_operator
+    # )
+    #
+    # check_silver_bucket = DummyOperator(
+    #     task_id="check-silver-bucket"
+    # )
 
     check_bronze_bucket >> create_gke_cluster >> extract_files >> destroy_gke_cluster
     # check_extractions >> some_failed_extraction
