@@ -6,7 +6,7 @@ resource "google_composer_environment" "composer" {
 
     node_config {
       zone         = "us-central1-a"
-      machine_type = "e2-small"
+      machine_type = "e2-medium"
     }
       software_config {
         image_version = "composer-1.17.0-preview.2-airflow-2.0.1"

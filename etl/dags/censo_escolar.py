@@ -14,7 +14,8 @@ from google.cloud.container_v1.types import (
     ClusterAutoscaling,
     VerticalPodAutoscaling,
     ResourceLimit,
-    NodeConfig
+    NodeConfig,
+    AutoprovisioningNodePoolDefaults
 )
 from airflow.providers.google.cloud.operators.kubernetes_engine import (
     GKECreateClusterOperator,
@@ -36,25 +37,26 @@ YEARS = set(range(FIRST_YEAR, LAST_YEAR + 1))
 
 
 def get_cluster_config():
-    cpu = ResourceLimit(resource_type="cpu", maximum=13, minimum=1)
-    memory = ResourceLimit(resource_type="memory", maximum=30, minimum=4)
+    cpu = ResourceLimit(resourceType="cpu", maximum=13, minimum=1)
+    memory = ResourceLimit(resourceType="memory", maximum=30, minimum=4)
+
+    node_pool_config = AutoprovisioningNodePoolDefaults(oauthScopes=["https://www.googleapis.com/auth/cloud-platform"])
 
     cluster_auto_scaling = ClusterAutoscaling(
-        enable_node_autoprovisioning=True,
-        resource_limits=[cpu, memory]
+        enableNodeAutoprovisioning=True,
+        resourceLimits=[cpu, memory],
+        autoprovisioningNodePoolDefaults=node_pool_config
     )
 
     vertical_pod_autoscaling = VerticalPodAutoscaling(enabled=True)
-    # years_not_in_bronze_bucket = '{{ ti.xcom_pull(task_ids="check-bronze-bucket", key="years_not_in_bucket") }}'
-    # nodes = int(len(years_not_in_bronze_bucket.split()) / 2) + 3
 
     cluster_config = Cluster(
         name="extraction-cluster",
-        initial_node_count=3,
+        initialNodeCount=3,
         autoscaling=cluster_auto_scaling,
-        vertical_pod_autoscaling=vertical_pod_autoscaling,
+        verticalPodAutoscaling=vertical_pod_autoscaling,
         location="southamerica-east1-a",
-        node_config=NodeConfig(oauth_scopes=["https://www.googleapis.com/auth/cloud-platform"])
+        nodeConfig=NodeConfig(oauthScopes=["https://www.googleapis.com/auth/cloud-platform"])
     )
 
     return cluster_config
@@ -136,11 +138,6 @@ with DAG(dag_id="censo-escolar", default_args=args, start_date=days_ago(2)) as d
         location="southamerica-east1-a",
         body=get_cluster_config()
     )
-
-    # create_cluster_secret = BashOperator(
-    #     task_id="create-cluster-secret",
-    #     bash_command=get_create_secret_cmd()
-    # )
 
     with TaskGroup(group_id="extract-files") as extract_files:
         years_not_in_bronze_bucket = '{{ ti.xcom_pull(task_ids="check-bronze-bucket", key="years_not_in_bucket") }}'
