@@ -15,7 +15,8 @@ from google.cloud.container_v1.types import (
     VerticalPodAutoscaling,
     ResourceLimit,
     NodeConfig,
-    AutoprovisioningNodePoolDefaults
+    AutoprovisioningNodePoolDefaults,
+    NodeManagement
 )
 from airflow.providers.google.cloud.operators.kubernetes_engine import (
     GKECreateClusterOperator,
@@ -36,10 +37,12 @@ YEARS = set(range(FIRST_YEAR, LAST_YEAR + 1))
 
 
 def get_cluster_config():
-    cpu = ResourceLimit(resource_type="cpu", maximum=15, minimum=1)
-    memory = ResourceLimit(resource_type="memory", maximum=60, minimum=4)
+    cpu = ResourceLimit(resource_type="cpu", maximum=20, minimum=1)
+    memory = ResourceLimit(resource_type="memory", maximum=80, minimum=4)
 
-    node_pool_nap = AutoprovisioningNodePoolDefaults(oauth_scopes=["https://www.googleapis.com/auth/cloud-platform"])
+    managament = NodeManagement(auto_repair=False)
+    node_pool_nap = AutoprovisioningNodePoolDefaults(oauth_scopes=["https://www.googleapis.com/auth/cloud-platform"],
+                                                     managament=managament)
 
     cluster_auto_scaling = ClusterAutoscaling(
         enable_node_autoprovisioning=True,
