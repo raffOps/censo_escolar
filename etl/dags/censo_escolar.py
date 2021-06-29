@@ -25,7 +25,6 @@ from airflow.providers.google.cloud.operators.kubernetes_engine import (
 
 from google.cloud import storage
 
-#if Variable.get("PROJECT"):
 
 BUCKET_BRONZE = Variable.get("BUCKET_BRONZE")
 BUCKET_SILVER = Variable.get("BUCKET_SILVER")
@@ -37,8 +36,8 @@ YEARS = set(range(FIRST_YEAR, LAST_YEAR + 1))
 
 
 def get_cluster_config():
-    cpu = ResourceLimit(resource_type="cpu", maximum=24, minimum=1)
-    memory = ResourceLimit(resource_type="memory", maximum=96, minimum=4)
+    cpu = ResourceLimit(resource_type="cpu", maximum=15, minimum=1)
+    memory = ResourceLimit(resource_type="memory", maximum=60, minimum=4)
 
     node_pool_nap = AutoprovisioningNodePoolDefaults(oauth_scopes=["https://www.googleapis.com/auth/cloud-platform"])
 
@@ -66,27 +65,13 @@ def get_pod_resources():
     return V1ResourceRequirements(
         requests={
             "cpu": "1",
-            "memory": "3G"
+            "memory": "2G"
         },
         limits={
             "cpu": "1",
-            "memory": "3G"
+            "memory": "2G"
         }
     )
-
-# def get_create_secret_cmd():
-#     return f"gcloud container clusters get-credentials extraction-cluster --zone us-central1-a --project {PROJECT} && " + \
-#            f"gcloud iam service-accounts keys create key.json --iam-account=etl-service-account@{PROJECT}.iam.gserviceaccount.com && " + \
-#            f"kubectl create secret generic gcs-credentials --from-file key.json"
-#
-#
-# def get_secret():
-#     secret = Secret(
-#         deploy_type='volume',
-#         deploy_target='/var/secrets/google',
-#         secret='gcs-credentials',
-#         key='key.json')
-#     return secret
 
 
 def check_files(**context):
