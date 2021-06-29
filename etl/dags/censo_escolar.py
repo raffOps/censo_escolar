@@ -40,9 +40,9 @@ def get_cluster_config():
     cpu = ResourceLimit(resource_type="cpu", maximum=20, minimum=1)
     memory = ResourceLimit(resource_type="memory", maximum=80, minimum=4)
 
-    managament = NodeManagement(auto_repair=False)
+    management = NodeManagement(auto_repair=False)
     node_pool_nap = AutoprovisioningNodePoolDefaults(oauth_scopes=["https://www.googleapis.com/auth/cloud-platform"],
-                                                     managament=managament)
+                                                     management=management)
 
     cluster_auto_scaling = ClusterAutoscaling(
         enable_node_autoprovisioning=True,
