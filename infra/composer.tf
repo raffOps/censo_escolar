@@ -1,5 +1,5 @@
 resource "google_composer_environment" "composer" {
-  name = "airflow"
+  name = "airflow-2"
   region = "us-central1"
     config {
     node_count = 3
@@ -17,6 +17,9 @@ resource "google_composer_environment" "composer" {
           "AIRFLOW_VAR_FIRST_YEAR" = "2012"
           "AIRFLOW_VAR_LAST_YEAR" = "2014"
           "AIRFLOW_VAR_PROJECT": var.project
+        }
+        pypi_packages = {
+          google-cloud-container = "==2.4.1"
         }
       }
   }
