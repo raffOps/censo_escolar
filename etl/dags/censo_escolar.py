@@ -147,7 +147,7 @@ with DAG(dag_id="censo-escolar", default_args=args, start_date=days_ago(2)) as d
                     resources=get_pod_resources(),
                 #    secrets=[get_secret()],
                     name=f"extract-file-{year}",
-                    on_failure_callback=extract_file_error_callback,
+                    #on_failure_callback=extract_file_error_callback,
                     get_logs=True,
                     startup_timeout_seconds=600
                     #is_delete_operator_pod=True,
