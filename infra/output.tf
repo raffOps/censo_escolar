@@ -1,13 +1,5 @@
-output "bucket_bronze" {
-  value = google_storage_bucket.bucket-bronze.url
-}
-
-output "bucket_silver" {
-  value = google_storage_bucket.bucket-silver.url
-}
-
-output "bucket_gold" {
-  value = google_storage_bucket.bucket-gold.url
+output "data_lake" {
+  value = google_storage_bucket.data-lake.url
 }
 
 output "composer" {

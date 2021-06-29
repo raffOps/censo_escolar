@@ -8,11 +8,21 @@ import subprocess
 
 import requests
 from google.cloud import storage
+import pandas as pd
+import pyarrow.parquet as pq
+import pyarrow as pa
 
-if os.getenv("BUCKET"):
-    BUCKET = os.getenv("BUCKET")
+if os.getenv("CHUNCKSIZE"):
+    CHUNCKSIZE = 100000
+
 else:
-    BUCKET = "rjr-teste-bronze"
+    CHUNCKSIZE = 100000
+
+
+if os.getenv("DATA_LAKE"):
+    DATA_LAKE = os.getenv("DATA_LAKE")
+else:
+    DATA_LAKE = "rjr-teste-bronze"
 
 # if os.getenv("GOOGLE_APPLICATION_CREDENTIALS"):
 #     CREDENTIALS = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
@@ -80,14 +90,61 @@ def unzip_file(year):
     print("Unzip complete")
 
 
+def convert_object_columns_to_str(df):
+    object_columns = [column for column, dtype in
+                      list(zip(df.dtypes.index,  df.dtypes))
+                      if dtype == object]
+
+    df[object_columns] = df[object_columns].astype(str)
+
+    return df
+
+
+def csv_to_parquet(year, compression):
+    for file in glob(f"*{year}/DADOS/*.CSV"):
+        parquet_name = re.search("DADOS\/(.*)\.", file).group(1) + ".parquet"
+        pqwriter = None
+        schema = None
+        for i, df in enumerate(pd.read_csv(file, chunksize=CHUNCKSIZE, encoding="latin1", sep="|")):
+            df = convert_object_columns_to_str(df)
+            try:
+                if schema:
+                    table = pa.Table.from_pandas(df, schema=schema)
+                else:
+                    table = pa.Table.from_pandas(df)
+                    schema = table.schema
+                if i == 0:
+                    pqwriter = pq.ParquetWriter(parquet_name, table.schema, compression=compression)
+                pqwriter.write_table(table)
+            except pa.ArrowTypeError as e:
+                print("aqui")
+
+        # close the parquet writer
+        if pqwriter:
+            pqwriter.close()
+        print(f"{parquet_name} criado")
+
+
+def upload_files_parquet(year):
+    print("Uploading files")
+    client = storage.Client.from_service_account_json(json_credentials_path=CREDENTIALS)
+    bucket = client.get_bucket(DATA_LAKE)
+    for file in glob(f"*.parquet"):
+        print(file)
+        blob = bucket.blob(f"landing_zone/censo-escolar/{year}/{file}")
+        blob.upload_from_filename(file)
+
+    print("Upload complete")
+
+
 def upload_files(year):
     print("Uploading files")
     client = storage.Client.from_service_account_json(json_credentials_path=CREDENTIALS)
-    bucket = client.get_bucket("rjr-portal-da-transparencia-bronze")
+    bucket = client.get_bucket(DATA_LAKE)
     for file in glob(f"*{year}/DADOS/*.CSV"):
         print(file)
         csv_name = re.search("DADOS\/(.*)\.", file).group(1) + ".csv"
-        blob = bucket.blob(f"censo-escolar/{year}/{csv_name}")
+        blob = bucket.blob(f"landing_zone/censo-escolar/{year}/{csv_name}")
         blob.upload_from_filename(file)
 
     print("Upload complete")
@@ -99,7 +156,7 @@ if __name__ == "__main__":
 
     download_file(year)
     unzip_file(year)
-    #csv_to_parquet(year, compression)
+    csv_to_parquet(year, compression)
     upload_files(year)
 
 

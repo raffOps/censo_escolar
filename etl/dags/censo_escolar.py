@@ -6,7 +6,7 @@ from airflow.utils.task_group import TaskGroup
 from airflow.models import Variable
 from airflow.operators.dummy import DummyOperator
 from airflow.operators.python import BranchPythonOperator, PythonOperator
-from airflow.operators.bash_operator import BashOperator
+from airflow.operators.bash import BashOperator
 from airflow.kubernetes.secret import Secret
 from kubernetes.client import V1ResourceRequirements
 from google.cloud.container_v1.types import (
@@ -27,9 +27,7 @@ from airflow.providers.google.cloud.operators.kubernetes_engine import (
 from google.cloud import storage
 
 
-BUCKET_BRONZE = Variable.get("BUCKET_BRONZE")
-BUCKET_SILVER = Variable.get("BUCKET_SILVER")
-BUCKET_GOLD = Variable.get("BUCKET_GOLD")
+DATA_LAKE = Variable.get("DATA_LAKE")
 PROJECT = Variable.get("PROJECT")
 FIRST_YEAR = int(Variable.get("FIRST_YEAR"))
 LAST_YEAR = int(Variable.get("LAST_YEAR"))
@@ -40,9 +38,8 @@ def get_cluster_config():
     cpu = ResourceLimit(resource_type="cpu", maximum=20, minimum=1)
     memory = ResourceLimit(resource_type="memory", maximum=80, minimum=4)
 
-    management = NodeManagement(auto_repair=False)
-    node_pool_nap = AutoprovisioningNodePoolDefaults(oauth_scopes=["https://www.googleapis.com/auth/cloud-platform"],
-                                                     management=management)
+    #management = NodeManagement(auto_repair=False)
+    node_pool_nap = AutoprovisioningNodePoolDefaults(oauth_scopes=["https://www.googleapis.com/auth/cloud-platform"])
 
     cluster_auto_scaling = ClusterAutoscaling(
         enable_node_autoprovisioning=True,
@@ -80,9 +77,9 @@ def get_pod_resources():
 def check_files(**context):
     ti = context["ti"]
     client = storage.Client()
-    bucket = client.get_bucket(BUCKET_BRONZE)
+    bucket = client.get_bucket(DATA_LAKE)
     years_in_bucket = set([int(blob.name.split("/")[1])
-                           for blob in list(bucket.list_blobs(prefix="censo-escolar"))]
+                           for blob in list(bucket.list_blobs(prefix="landing_zone/censo-escolar"))]
                           )
     years_not_in_bucket = " ".join(str(year) for year in (YEARS - years_in_bucket))
     if years_not_in_bucket:
@@ -144,7 +141,7 @@ with DAG(dag_id="censo-escolar", default_args=args, start_date=days_ago(2)) as d
                     image=f"gcr.io/{PROJECT}/censo_escolar:latest",
                     arguments=["sh", "-c", f'python extract.py {year}'],
                     env_vars={
-                        "BUCKET": BUCKET_BRONZE,
+                        "DATA_LAKE": DATA_LAKE,
                         "GOOGLE_APPLICATION_CREDENTIALS": "/var/secrets/google/key.json"
                     },
                     resources=get_pod_resources(),
