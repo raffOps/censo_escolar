@@ -64,6 +64,7 @@ def get_cluster_config():
         name="extraction-cluster",
         location="southamerica-east1-a",
         node_pools=[node_pool],
+        initial_node_count=0,
         autoscaling=cluster_auto_scaling
     )
 
