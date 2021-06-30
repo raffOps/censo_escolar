@@ -64,7 +64,7 @@ def get_cluster_config():
         name="extraction-cluster",
         location="southamerica-east1-a",
         node_pools=[node_pool],
-        initial_node_count=1,
+        initial_node_count=2,
         autoscaling=cluster_auto_scaling
     )
 
@@ -88,7 +88,7 @@ def check_files(**context):
     ti = context["ti"]
     client = storage.Client()
     bucket = client.get_bucket(DATA_LAKE)
-    years_in_bucket = set([int(blob.name.split("/")[1])
+    years_in_bucket = set([int(blob.name.split("/")[2])
                            for blob in list(bucket.list_blobs(prefix="landing_zone/censo-escolar"))]
                           )
     years_not_in_bucket = " ".join(str(year) for year in (YEARS - years_in_bucket))
