@@ -48,7 +48,7 @@ def get_cluster_config():
     node_pool = NodePool(
         name="extraction-pool",
         config=node_pool_config,
-        inicital_node_count=0,
+        initial_node_count=0,
         autoscaling=node_pool_auto_scaling
 
     )
