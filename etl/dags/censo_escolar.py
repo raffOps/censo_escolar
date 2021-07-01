@@ -57,6 +57,7 @@ def get_cluster_def():
     }
     return cluster_def
 
+
 def get_cluster_def2():
     node_config = {
         "oauth_scopes": ["https://www.googleapis.com/auth/cloud-platform"],
@@ -148,7 +149,7 @@ with DAG(dag_id="censo-escolar", default_args=args, start_date=days_ago(2)) as d
         task_id='create-gke-cluster',
         project_id=PROJECT,
         location="southamerica-east1-a",
-        body=get_cluster_def2()
+        body=get_cluster_def()
     )
 
     with TaskGroup(group_id="extract-files") as extract_files:
