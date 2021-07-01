@@ -57,6 +57,38 @@ def get_cluster_def():
     }
     return cluster_def
 
+def get_cluster_def2():
+    cpu = {
+        "resource_type": "cpu",
+        "maximum": 20,
+        "minimum": 1
+    }
+    memory = {
+        "resource_type": "memory",
+        "maximum": 32,
+        "minimum": 4,
+    }
+
+    node_config = {
+        "oauth_scopes": ["https://www.googleapis.com/auth/cloud-platform"]
+       # "management": {"auto_repair": False}
+    }
+
+    cluster_auto_scaling = {
+        "enable_node_autoprovisioning": True,
+        "resource_limits": [cpu, memory],
+        "autoprovisioning_node_pool_defaults": node_config
+    }
+
+    cluster_def = {
+        "name": "extraction-cluster",
+        #"initial_node_count": 1,
+        "autoscaling": cluster_auto_scaling,
+        "location": "southamerica-east1-a",
+        #"node_config": node_config
+    }
+    return cluster_def
+
 
 def check_files(**context):
     ti = context["ti"]
@@ -173,7 +205,7 @@ with DAG(dag_id="censo-escolar", default_args=args, start_date=days_ago(2)) as d
 #     # )
 #
     #extract_files
-    check_bronze_bucket >> create_gke_cluster #>> extract_files >> destroy_gke_cluster
+    check_bronze_bucket >> create_gke_cluster >> extract_files #>> destroy_gke_cluster
 #     # check_extractions >> some_failed_extraction
 #     # check_extractions >> check_silver_bucket
 #
