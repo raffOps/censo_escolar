@@ -38,8 +38,8 @@ def get_cluster_def():
     }
 
     node_config = {
-        "oauth_scopes": ["https://www.googleapis.com/auth/cloud-platform"],
-        "management": {"auto_repair": False}
+        "oauth_scopes": ["https://www.googleapis.com/auth/cloud-platform"]
+       # "management": {"auto_repair": False}
     }
 
     cluster_auto_scaling = {
