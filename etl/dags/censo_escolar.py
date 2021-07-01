@@ -49,7 +49,7 @@ def get_cluster_def():
     }
 
     cluster_def = {
-        "name": "extraction-pool",
+        "name": "extraction-cluster",
         "initial_node_count": 1,
         "autoscaling": cluster_auto_scaling,
         "location": "southamerica-east1-a",
@@ -118,12 +118,12 @@ with DAG(dag_id="censo-escolar", default_args=args, start_date=days_ago(2)) as d
     #     provide_context=True
     # )
     #
-    # create_gke_cluster = GKECreateClusterOperator(
-    #     task_id='create-gke-cluster',
-    #     project_id=PROJECT,
-    #     location="southamerica-east1-a",
-    #     body=get_cluster_def()
-    # )
+    create_gke_cluster = GKECreateClusterOperator(
+        task_id='create-gke-cluster',
+        project_id=PROJECT,
+        location="southamerica-east1-a",
+        body=get_cluster_def()
+    )
 
     with TaskGroup(group_id="extract-files") as extract_files:
         years_not_in_bronze_bucket = '{{ ti.xcom_pull(task_ids="check-bronze-bucket", key="years_not_in_bucket") }}'
@@ -172,8 +172,8 @@ with DAG(dag_id="censo-escolar", default_args=args, start_date=days_ago(2)) as d
 #     #     task_id="check-silver-bucket"
 #     # )
 #
-    extract_files
-    #check_bronze_bucket >> create_gke_cluster #>> extract_files >> destroy_gke_cluster
+    #extract_files
+    check_bronze_bucket >> create_gke_cluster #>> extract_files >> destroy_gke_cluster
 #     # check_extractions >> some_failed_extraction
 #     # check_extractions >> check_silver_bucket
 #
