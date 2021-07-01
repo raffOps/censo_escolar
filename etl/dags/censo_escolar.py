@@ -58,34 +58,28 @@ def get_cluster_def():
     return cluster_def
 
 def get_cluster_def2():
-    cpu = {
-        "resource_type": "cpu",
-        "maximum": 20,
-        "minimum": 1
-    }
-    memory = {
-        "resource_type": "memory",
-        "maximum": 32,
-        "minimum": 4,
-    }
-
     node_config = {
         "oauth_scopes": ["https://www.googleapis.com/auth/cloud-platform"]
-       # "management": {"auto_repair": False}
+        "machine_type": "e2-standard-2"
     }
 
-    cluster_auto_scaling = {
-        "enable_node_autoprovisioning": True,
-        "resource_limits": [cpu, memory],
-        "autoprovisioning_node_pool_defaults": node_config
+    node_pool_auto_scaling = {
+        "enabled": True,
+        "min_node_count": 0,
+        "max_node_count": 15,
+        "autoprovisioned": True
+    }
+
+    node_pool = {
+        "name": "extraction-pool",
+        "config": node_config,
+        "autoscaling": node_pool_auto_scaling
     }
 
     cluster_def = {
         "name": "extraction-cluster",
-        #"initial_node_count": 1,
-        "autoscaling": cluster_auto_scaling,
         "location": "southamerica-east1-a",
-        #"node_config": node_config
+        "node_pools": [node_pool]
     }
     return cluster_def
 
@@ -108,12 +102,12 @@ def check_files(**context):
 def get_pod_resources():
     return V1ResourceRequirements(
         requests={
-            "cpu": "1",
-            "memory": "2G"
+            "cpu": "1.5",
+            "memory": "4G"
         },
         limits={
-            "cpu": "1",
-            "memory": "2G"
+            "cpu": "1.5",
+            "memory": "4G"
         }
     )
 #
@@ -154,7 +148,7 @@ with DAG(dag_id="censo-escolar", default_args=args, start_date=days_ago(2)) as d
         task_id='create-gke-cluster',
         project_id=PROJECT,
         location="southamerica-east1-a",
-        body=get_cluster_def()
+        body=get_cluster_def2()
     )
 
     with TaskGroup(group_id="extract-files") as extract_files:
