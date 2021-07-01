@@ -28,18 +28,18 @@ YEARS = set(range(FIRST_YEAR, LAST_YEAR + 1))
 def get_cluster_def():
     cpu = {
         "resource_type": "cpu",
-        "maximum": 15,
+        "maximum": 25,
         "minimum": 1
     }
     memory = {
         "resource_type": "memory",
-        "maximum": 30,
-        "minimum": 2,
+        "maximum": 50,
+        "minimum": 1,
     }
 
     node_pool_config = {
         "oauth_scopes": ["https://www.googleapis.com/auth/cloud-platform"],
-        #"machine_type": "e2-medium"
+        "machine_type": "e2-medium"
     }
 
     cluster_auto_scaling = {
@@ -61,33 +61,6 @@ def get_cluster_def():
         "node_config": default_node_pool_config
     }
     return cluster_def
-
-
-# def get_cluster_def2():
-#     node_config = {
-#         "oauth_scopes": ["https://www.googleapis.com/auth/cloud-platform"],
-#         "machine_type": "e2-standard-2"
-#     }
-#
-#     node_pool_auto_scaling = {
-#         "enabled": True,
-#         "min_node_count": 0,
-#         "max_node_count": 15,
-#         "autoprovisioned": True
-#     }
-#
-#     node_pool = {
-#         "name": "extraction-pool",
-#         "config": node_config,
-#         "autoscaling": node_pool_auto_scaling
-#     }
-#
-#     cluster_def = {
-#         "name": "extraction-cluster",
-#         "location": "southamerica-east1-a",
-#         "node_pools": [node_pool]
-#     }
-#     return cluster_def
 
 
 def check_files(**context):
@@ -116,53 +89,52 @@ def get_pod_resources():
             "memory": "2G"
         }
     )
-#
-#
-# def extract_file_error_callback(**context):
-#     instance = context["task_instance"]
-#     print(f"Error extraction: {instance}")
-#     ti = context["ti"]
-#     ti.xcom_push(key="failed_extraction", value=True)
-#
-#
-# def check_extraction(**context):
-#     ti = context["ti"]
-#     any_failure = ti.xcom_pull(key="failed extraction")
-#     if any_failure:
-#         return "some-failed-extraction"
-#     else:
-#         return "check-silver-bucket"
-#
-#
-# def raise_exception_operator():
-#     raise Exception("Some failed extraction")
-#
-#
+
+
+def check_extraction(**context):
+    ti = context["ti"]
+    client = storage.Client()
+    bucket = client.get_bucket(DATA_LAKE)
+    years_in_bucket = set([int(blob.name.split("/")[2])
+                           for blob in list(bucket.list_blobs(prefix="landing_zone/censo-escolar"))]
+                          )
+    years_not_in_bucket = " ".join(str(year) for year in (YEARS - years_in_bucket))
+    if years_not_in_bucket:
+        ti.xcom_push(key="years_not_in_bucket_pos_extract", value=years_not_in_bucket)
+        return "some_failed_extraction"
+    else:
+        return "check_processing_zone"
+
+
+def raise_exception_operator():
+    raise Exception("Some failed extraction")
+
+
 args = {
     'owner': 'airflow',
 }
 
 with DAG(dag_id="censo-escolar", default_args=args, start_date=days_ago(2)) as dag:
 
-    check_bronze_bucket = BranchPythonOperator(
-        task_id="check-bronze-bucket",
+    check_landing_zone = BranchPythonOperator(
+        task_id="check_landing_zone",
         python_callable=check_files,
         provide_context=True
     )
 
     create_gke_cluster = GKECreateClusterOperator(
-        task_id='create-gke-cluster',
+        task_id='create_gke_cluster',
         project_id=PROJECT,
         location="southamerica-east1-a",
         body=get_cluster_def()
     )
 
-    with TaskGroup(group_id="extract-files") as extract_files:
+    with TaskGroup(group_id="extract_files") as extract_files:
         years_not_in_bronze_bucket = '{{ ti.xcom_pull(task_ids="check-bronze-bucket", key="years_not_in_bucket") }}'
         for year in YEARS:
             if str(year) not in years_not_in_bronze_bucket:
                 extract_file = GKEStartPodOperator(
-                    task_id=f"extract-file-{year}",
+                    task_id=f"extract_file_{year}",
                     project_id=PROJECT,
                     location="southamerica-east1-a",
                     cluster_name="extraction-cluster",
@@ -174,44 +146,38 @@ with DAG(dag_id="censo-escolar", default_args=args, start_date=days_ago(2)) as d
                         "GOOGLE_APPLICATION_CREDENTIALS": "/var/secrets/google/key.json"
                     },
                     resources=get_pod_resources(),
-                #    secrets=[get_secret()],
                     name=f"extract-file-{year}",
-                    #on_failure_callback=extract_file_error_callback,
                     get_logs=True,
                     startup_timeout_seconds=600
-                    #is_delete_operator_pod=True,
                 )
 #
-#     destroy_gke_cluster = GKEDeleteClusterOperator(
-#         task_id="destroy-gke-cluster",
-#         name="extraction-cluster",
-#         project_id=PROJECT,
-#         location="southamerica-east1-a"
-#     )
-#     # #
-#     # check_extractions = BranchPythonOperator(
-#     #     task_id="check-extractions",
-#     #     python_callable=check_extraction,
-#     #     provide_context=True
-#     # )
-#     #
-#     # some_failed_extraction = PythonOperator(
-#     #     task_id="some-failer-extration",
-#     #     python_callable=raise_exception_operator
-#     # )
-#     #
-#     # check_silver_bucket = DummyOperator(
-#     #     task_id="check-silver-bucket"
-#     # )
-#
-    #extract_files
-    check_bronze_bucket >> create_gke_cluster >> extract_files #>> destroy_gke_cluster
-#     # check_extractions >> some_failed_extraction
-#     # check_extractions >> check_silver_bucket
-#
-#     # check_bronze_bucket >> check_silver_bucket
-#     #
-#     # extract_files >> check_extractions
-#     # check_extractions >> some_failed_extraction
-#     # check_extractions >> check_silver_bucket
-#
+    destroy_gke_cluster = GKEDeleteClusterOperator(
+        task_id="destroy_gke_cluster",
+        name="extraction-cluster",
+        project_id=PROJECT,
+        location="southamerica-east1-a"
+    )
+
+    check_extractions = BranchPythonOperator(
+        task_id="check_extractions",
+        python_callable=check_extraction,
+        provide_context=True
+    )
+
+    some_failed_extraction = PythonOperator(
+        task_id="some_failed_extraction",
+        python_callable=raise_exception_operator
+    )
+
+    check_processing_zone = DummyOperator(
+        task_id="check_processing_zone"
+    )
+
+    check_landing_zone >> create_gke_cluster
+    check_landing_zone >> check_processing_zone
+
+    create_gke_cluster >> extract_files >> destroy_gke_cluster
+    extract_files >> check_extractions
+
+    check_extractions >> some_failed_extraction
+    check_extractions >> check_processing_zone
