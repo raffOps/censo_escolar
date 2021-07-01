@@ -59,7 +59,7 @@ def get_cluster_def():
 
 def get_cluster_def2():
     node_config = {
-        "oauth_scopes": ["https://www.googleapis.com/auth/cloud-platform"]
+        "oauth_scopes": ["https://www.googleapis.com/auth/cloud-platform"],
         "machine_type": "e2-standard-2"
     }
 
