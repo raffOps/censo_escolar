@@ -110,11 +110,7 @@ def raise_exception_operator():
     raise Exception("Some failed extraction")
 
 
-args = {
-    'owner': 'airflow',
-}
-
-with DAG(dag_id="censo-escolar", default_args=args, start_date=days_ago(2)) as dag:
+with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}) as dag:
 
     check_landing_zone = BranchPythonOperator(
         task_id="check_landing_zone",
