@@ -28,24 +28,29 @@ YEARS = set(range(FIRST_YEAR, LAST_YEAR + 1))
 def get_cluster_def():
     cpu = {
         "resource_type": "cpu",
-        "maximum": 20,
+        "maximum": 15,
         "minimum": 1
     }
     memory = {
         "resource_type": "memory",
-        "maximum": 32,
-        "minimum": 4,
+        "maximum": 30,
+        "minimum": 2,
     }
 
-    node_config = {
-        "oauth_scopes": ["https://www.googleapis.com/auth/cloud-platform"]
-       # "management": {"auto_repair": False}
+    node_pool_config = {
+        "oauth_scopes": ["https://www.googleapis.com/auth/cloud-platform"],
+        #"machine_type": "e2-medium"
     }
 
     cluster_auto_scaling = {
         "enable_node_autoprovisioning": True,
         "resource_limits": [cpu, memory],
-        "autoprovisioning_node_pool_defaults": node_config
+        "autoprovisioning_node_pool_defaults": node_pool_config
+    }
+
+    default_node_pool_config = {
+        "oauth_scopes": ["https://www.googleapis.com/auth/cloud-platform"],
+        "machine_type": "e2-micro"
     }
 
     cluster_def = {
@@ -53,36 +58,36 @@ def get_cluster_def():
         "initial_node_count": 1,
         "autoscaling": cluster_auto_scaling,
         "location": "southamerica-east1-a",
-        "node_config": node_config
+        "node_config": default_node_pool_config
     }
     return cluster_def
 
 
-def get_cluster_def2():
-    node_config = {
-        "oauth_scopes": ["https://www.googleapis.com/auth/cloud-platform"],
-        "machine_type": "e2-standard-2"
-    }
-
-    node_pool_auto_scaling = {
-        "enabled": True,
-        "min_node_count": 0,
-        "max_node_count": 15,
-        "autoprovisioned": True
-    }
-
-    node_pool = {
-        "name": "extraction-pool",
-        "config": node_config,
-        "autoscaling": node_pool_auto_scaling
-    }
-
-    cluster_def = {
-        "name": "extraction-cluster",
-        "location": "southamerica-east1-a",
-        "node_pools": [node_pool]
-    }
-    return cluster_def
+# def get_cluster_def2():
+#     node_config = {
+#         "oauth_scopes": ["https://www.googleapis.com/auth/cloud-platform"],
+#         "machine_type": "e2-standard-2"
+#     }
+#
+#     node_pool_auto_scaling = {
+#         "enabled": True,
+#         "min_node_count": 0,
+#         "max_node_count": 15,
+#         "autoprovisioned": True
+#     }
+#
+#     node_pool = {
+#         "name": "extraction-pool",
+#         "config": node_config,
+#         "autoscaling": node_pool_auto_scaling
+#     }
+#
+#     cluster_def = {
+#         "name": "extraction-cluster",
+#         "location": "southamerica-east1-a",
+#         "node_pools": [node_pool]
+#     }
+#     return cluster_def
 
 
 def check_files(**context):
@@ -103,12 +108,12 @@ def check_files(**context):
 def get_pod_resources():
     return V1ResourceRequirements(
         requests={
-            "cpu": "1.5",
-            "memory": "4G"
+            "cpu": "1",
+            "memory": "2G"
         },
         limits={
-            "cpu": "1.5",
-            "memory": "4G"
+            "cpu": "1",
+            "memory": "2G"
         }
     )
 #
