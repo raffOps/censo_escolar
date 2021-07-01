@@ -112,12 +112,12 @@ args = {
 
 with DAG(dag_id="censo-escolar", default_args=args, start_date=days_ago(2)) as dag:
 
-    # check_bronze_bucket = BranchPythonOperator(
-    #     task_id="check-bronze-bucket",
-    #     python_callable=check_files,
-    #     provide_context=True
-    # )
-    #
+    check_bronze_bucket = BranchPythonOperator(
+        task_id="check-bronze-bucket",
+        python_callable=check_files,
+        provide_context=True
+    )
+
     create_gke_cluster = GKECreateClusterOperator(
         task_id='create-gke-cluster',
         project_id=PROJECT,
