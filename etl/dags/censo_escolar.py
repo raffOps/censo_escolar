@@ -126,14 +126,6 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
 
     with TaskGroup(group_id="extract_files") as extract_files:
         for year in YEARS:
-            check_year = BranchPythonOperator(
-                task_id=f"is_year_{year}_not_downloaded",
-                python_callable=check_year_not_downloaded,
-                provide_context=True,
-                op_kwargs={"true_option": f"extract_file_{year}",
-                           "false_option": f"extraction_year_{year}_finished",
-                           "year": str(year)}
-            )
 
             extract_file = GKEStartPodOperator(
                 task_id=f"extract_file_{year}",
@@ -155,6 +147,15 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
 
             extraction_year_finished = DummyOperator(
                 task_id=f"extraction_year_{year}_finished"
+            )
+            
+            check_year = BranchPythonOperator(
+                task_id=f"is_year_{year}_not_downloaded",
+                python_callable=check_year_not_downloaded,
+                provide_context=True,
+                op_kwargs={"true_option": f"extract_file_{year}",
+                           "false_option": f"extraction_year_{year}_finished",
+                           "year": str(year)}
             )
 
             check_year >> extract_file >> extraction_year_finished
