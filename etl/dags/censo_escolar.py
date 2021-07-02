@@ -37,7 +37,7 @@ def get_cluster_def():
 
     node_pool_config = {
         "oauth_scopes": ["https://www.googleapis.com/auth/cloud-platform"],
-        "machine_type": "e2-medium"
+        #"machine_type": "e2-medium"
     }
 
     cluster_auto_scaling = {
@@ -48,7 +48,7 @@ def get_cluster_def():
 
     default_node_pool_config = {
         "oauth_scopes": ["https://www.googleapis.com/auth/cloud-platform"],
-       # "machine_type": "e2-micro"
+        "machine_type": "e2-micro"
     }
 
     cluster_def = {
