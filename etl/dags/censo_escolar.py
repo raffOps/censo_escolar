@@ -82,7 +82,8 @@ def check_year_not_downloaded(**context):
     true_option = context["true_option"]
     false_option = context["false_option"]
     years_not_in_landing_zone = '{{ ti.xcom_pull(task_ids="check_landing_zone", key="years_not_in_landing_zone") }}'
-
+    print(year)
+    print(years_not_in_landing_zone)
     if year in years_not_in_landing_zone:
         return true_option
     else:
@@ -113,7 +114,7 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
         python_callable=check_years_not_downloaded,
         provide_context=True,
         op_kwargs={"true_option": "create_gke_cluster",
-                   "false_option": "check_processing_zone"}
+                   "false_option": "extraction_finished"}
     )
 
     create_gke_cluster = GKECreateClusterOperator(
@@ -130,7 +131,7 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
                 python_callable=check_year_not_downloaded,
                 provide_context=True,
                 op_kwargs={"true_option": f"extract_file_{year}",
-                           "false_option": f"extraction_year_{year}_completed",
+                           "false_option": f"extraction_year_{year}_finished",
                            "year": str(year)}
             )
 
@@ -152,12 +153,12 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
                 startup_timeout_seconds=600
             )
 
-            extraction_year_completed = DummyOperator(
-                task_id=f"extraction_year_{year}_completed"
+            extraction_year_finished = DummyOperator(
+                task_id=f"extraction_year_{year}_finished"
             )
 
-            check_year >> extract_file >> extraction_year_completed
-            check_year >> extraction_year_completed
+            check_year >> extract_file >> extraction_year_finished
+            check_year >> extraction_year_finished
 
     destroy_gke_cluster = GKEDeleteClusterOperator(
         task_id="destroy_gke_cluster",
@@ -171,7 +172,7 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
         python_callable=check_years_not_downloaded,
         provide_context=True,
         op_kwargs={"true_option": "some_failed_extraction",
-                   "false_option": "check_processing_zone"}
+                   "false_option": "extraction_finished"}
     )
 
     some_failed_extraction = PythonOperator(
@@ -179,15 +180,15 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
         python_callable=raise_exception_operator
     )
 
-    check_processing_zone = DummyOperator(
-        task_id="check_processing_zone"
+    extraction_finished = DummyOperator(
+        task_id="extraction_finished"
     )
 
     check_landing_zone >> create_gke_cluster
-    check_landing_zone >> check_processing_zone
+    check_landing_zone >> extraction_finished
 
     create_gke_cluster >> extract_files >> destroy_gke_cluster
     extract_files >> check_extractions
 
     check_extractions >> some_failed_extraction
-    check_extractions >> check_processing_zone
+    check_extractions >> extraction_finished
