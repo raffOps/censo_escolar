@@ -164,7 +164,8 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
         task_id="destroy_gke_cluster",
         name="extraction-cluster",
         project_id=PROJECT,
-        location="southamerica-east1-a"
+        location="southamerica-east1-a",
+        depends_on_past=False
     )
 
     check_extractions = BranchPythonOperator(
