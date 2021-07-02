@@ -6,8 +6,6 @@ from airflow.utils.task_group import TaskGroup
 from airflow.models import Variable
 from airflow.operators.dummy import DummyOperator
 from airflow.operators.python import BranchPythonOperator, PythonOperator
-from airflow.operators.bash import BashOperator
-from airflow.kubernetes.secret import Secret
 from kubernetes.client import V1ResourceRequirements
 
 from airflow.providers.google.cloud.operators.kubernetes_engine import (
@@ -28,12 +26,12 @@ YEARS = list(range(FIRST_YEAR, LAST_YEAR + 1))
 def get_cluster_def():
     cpu = {
         "resource_type": "cpu",
-        "maximum": 25,
+        "maximum": 50,
         "minimum": 1
     }
     memory = {
         "resource_type": "memory",
-        "maximum": 50,
+        "maximum": 100,
         "minimum": 1,
     }
 
@@ -50,7 +48,7 @@ def get_cluster_def():
 
     default_node_pool_config = {
         "oauth_scopes": ["https://www.googleapis.com/auth/cloud-platform"],
-        "machine_type": "e2-micro"
+       # "machine_type": "e2-micro"
     }
 
     cluster_def = {
