@@ -127,6 +127,9 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
     )
 
     with TaskGroup(group_id="extract_files") as extract_files:
+        wait_extraction_finish = DummyOperator(
+            task_id="wait_extraction_finish"
+        )
         for year in YEARS:
             check_year = BranchPythonOperator(
                 task_id=f"is_year__{year}_not_downloaded",
@@ -155,9 +158,6 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
                 startup_timeout_seconds=600
             )
 
-            wait_extraction_finish = DummyOperator(
-                task_id="wait_extraction_finish"
-            )
             check_year >> extract_file >> wait_extraction_finish
             check_year >> wait_extraction_finish
 
