@@ -63,28 +63,28 @@ def get_cluster_def():
     return cluster_def
 
 
-def check_files(**context):
+def check_years_not_downloaded(**context):
     ti = context["ti"]
-    true_option = context["true"]
-    false_option = context["false"]
+    true_option = context["true_option"]
+    false_option = context["false_option"]
     client = storage.Client()
     bucket = client.get_bucket(DATA_LAKE)
-    years_in_bucket = set([int(blob.name.split("/")[2])
+    years_in_landing_zone = set([int(blob.name.split("/")[2])
                            for blob in list(bucket.list_blobs(prefix="landing_zone/censo-escolar"))]
                           )
-    years_not_in_bucket = " ".join(str(year) for year in (set(YEARS) - years_in_bucket))
-    if years_not_in_bucket:
-        ti.xcom_push(key="years_not_in_bucket_pos_extract", value=years_not_in_bucket)
+    years_not_in_landing_zone = " ".join(str(year) for year in (set(YEARS) - years_in_landing_zone))
+    if years_not_in_landing_zone:
+        ti.xcom_push(key="years_not_in_landing_zone", value=years_not_in_landing_zone)
         return true_option
     else:
         return false_option
 
 
-def is_year_not_downloaded(**context):
+def check_year_not_downloaded(**context):
     year = context["year"]
     true_option = context["true"]
     false_option = context["false"]
-    years_not_in_landing_zone = '{{ ti.xcom_pull(task_ids="check_landing_zone", key="years_not_in_bucket") }}'
+    years_not_in_landing_zone = '{{ ti.xcom_pull(task_ids="check_landing_zone", key="years_not_in_landing_zone") }}'
 
     if year in years_not_in_landing_zone:
         return true_option
@@ -113,7 +113,7 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
 
     check_landing_zone = BranchPythonOperator(
         task_id="check_landing_zone",
-        python_callable=check_files,
+        python_callable=check_years_not_downloaded,
         provide_context=True,
         op_kwargs={"true_option": "create_gke_cluster",
                    "false_option": "check_processing_zone"}
@@ -133,7 +133,7 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
         for year in YEARS:
             check_year = BranchPythonOperator(
                 task_id=f"is_year_{year}_not_downloaded",
-                python_callable=is_year_not_downloaded,
+                python_callable=check_year_not_downloaded,
                 provide_context=True,
                 op_kwargs={"true_option": f"extract_file_{year}",
                            "false_option": "wait_extraction_finish",
@@ -170,7 +170,7 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
 
     check_extractions = BranchPythonOperator(
         task_id="check_extractions",
-        python_callable=check_files,
+        python_callable=check_years_not_downloaded,
         provide_context=True,
         op_kwargs={"true_option": "some_failed_extraction",
                    "false_option": "check_processing_zone"}
