@@ -26,7 +26,7 @@ YEARS = list(range(FIRST_YEAR, LAST_YEAR + 1))
 def get_cluster_def():
     cpu = {
         "resource_type": "cpu",
-        "maximum": 50,
+        "maximum": 24,
         "minimum": 1
     }
     memory = {
@@ -36,8 +36,7 @@ def get_cluster_def():
     }
 
     node_pool_config = {
-        "oauth_scopes": ["https://www.googleapis.com/auth/cloud-platform"],
-        #"machine_type": "e2-medium"
+        "oauth_scopes": ["https://www.googleapis.com/auth/cloud-platform"]
     }
 
     cluster_auto_scaling = {
@@ -80,8 +79,8 @@ def check_years_not_downloaded(**context):
 
 def check_year_not_downloaded(**context):
     year = context["year"]
-    true_option = context["true"]
-    false_option = context["false"]
+    true_option = context["true_option"]
+    false_option = context["false_option"]
     years_not_in_landing_zone = '{{ ti.xcom_pull(task_ids="check_landing_zone", key="years_not_in_landing_zone") }}'
 
     if year in years_not_in_landing_zone:
