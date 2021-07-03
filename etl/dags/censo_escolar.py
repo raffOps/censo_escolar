@@ -72,11 +72,10 @@ def check_years_not_downloaded(**context):
     client = storage.Client()
     bucket = client.get_bucket(DATA_LAKE)
     years_in_landing_zone = set([int(blob.name.split("/")[2])
-                           for blob in list(bucket.list_blobs(prefix="landing_zone/censo-escolar"))])
-    years_not_in_landing_zone = " ".join(str(year)
-                                         for year in (set(YEARS) - years_in_landing_zone))
+                             for blob in list(bucket.list_blobs(prefix="landing_zone/censo-escolar"))])
+    years_not_in_landing_zone = set(YEARS) - years_in_landing_zone
     if years_not_in_landing_zone:
-        ti.xcom_push(key="years_not_in_landing_zone", value=years_not_in_landing_zone)
+        ti.xcom_push(key="years_in_landing_zone", value=years_in_landing_zone)
         return true_option
     else:
         return false_option
@@ -87,8 +86,8 @@ def check_year_downloaded(**context):
     year = context["year"]
     true_option = context["true_option"]
     false_option = context["false_option"]
-    years_not_in_landing_zone = ti.xcom_pull(task_ids="check_landing_zone", key="years_not_in_landing_zone")
-    if year not in years_not_in_landing_zone:
+    years_in_landing_zone = ti.xcom_pull(task_ids="check_landing_zone", key="years_in_landing_zone")
+    if year in years_in_landing_zone:
         return true_option
     else:
         return false_option
@@ -159,7 +158,7 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
                 provide_context=True,
                 op_kwargs={"true_option": f"extraction_year_{year}_finished",
                            "false_option": f"extract_file_{year}",
-                           "year": str(year)}
+                           "year": year}
             )
             extract_files_tasks.append((extract_file, extraction_year_finished, check_year))
 
