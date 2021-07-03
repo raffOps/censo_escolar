@@ -190,11 +190,10 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
         task_id="extraction_finished"
     )
 
-    #check_landing_zone >> create_gke_cluster
-    #check_landing_zone >> extraction_finished
+    check_landing_zone >> create_gke_cluster
+    check_landing_zone >> extraction_finished
 
-    #create_gke_cluster >> \
-    extract_files >> destroy_gke_cluster
+    create_gke_cluster >> extract_files >> destroy_gke_cluster
     extract_files >> check_extractions
 
     check_extractions >> some_failed_extraction
