@@ -97,11 +97,11 @@ def get_pod_resources():
     return V1ResourceRequirements(
         requests={
             "cpu": "1",
-            "memory": "2G"
+            "memory": "4G"
         },
         limits={
             "cpu": "1",
-            "memory": "2G"
+            "memory": "4G"
         }
     )
 
