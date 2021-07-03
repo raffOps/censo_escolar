@@ -75,7 +75,7 @@ def check_years_not_downloaded(**context):
                              for blob in list(bucket.list_blobs(prefix="landing_zone/censo-escolar"))])
     years_not_in_landing_zone = set(YEARS) - years_in_landing_zone
     if years_not_in_landing_zone:
-        ti.xcom_push(key="years_in_landing_zone", value=years_in_landing_zone)
+        ti.xcom_push(key="years_in_landing_zone", value=json.dumps(years_in_landing_zone))
         return true_option
     else:
         return false_option
@@ -87,7 +87,7 @@ def check_year_downloaded(**context):
     true_option = context["true_option"]
     false_option = context["false_option"]
     years_in_landing_zone = ti.xcom_pull(task_ids="check_landing_zone", key="years_in_landing_zone")
-    if year in years_in_landing_zone:
+    if year in json.loads(years_in_landing_zone):
         return true_option
     else:
         return false_option
