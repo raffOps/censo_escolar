@@ -82,13 +82,13 @@ def check_years_not_downloaded(**context):
         return false_option
 
 
-def check_year_not_downloaded(**context):
+def check_year_downloaded(**context):
     ti = context["ti"]
     year = context["year"]
     true_option = context["true_option"]
     false_option = context["false_option"]
     years_not_in_landing_zone = ti.xcom_pull(task_ids="check_landing_zone", key="years_not_in_landing_zone")
-    if year in years_not_in_landing_zone:
+    if year not in years_not_in_landing_zone:
         return true_option
     else:
         return false_option
@@ -154,11 +154,11 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
             )
 
             check_year = BranchPythonOperator(
-                task_id=f"is_year_{year}_not_downloaded",
-                python_callable=check_year_not_downloaded,
+                task_id=f"check_year_{year}",
+                python_callable=check_year_downloaded,
                 provide_context=True,
-                op_kwargs={"true_option": f"extract_file_{year}",
-                           "false_option": f"extraction_year_{year}_finished",
+                op_kwargs={"true_option": f"extraction_year_{year}_finished",
+                           "false_option": f"extract_file_{year}",
                            "year": str(year)}
             )
 
