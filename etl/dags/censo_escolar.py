@@ -60,7 +60,8 @@ def get_cluster_def():
         "initial_node_count": 1,
         "autoscaling": cluster_auto_scaling,
         "location": "southamerica-east1-a",
-        "node_config": default_node_pool_config
+        "node_config": default_node_pool_config,
+        "private_cluster_config": private_cluster_config
     }
     return cluster_def
 
@@ -168,6 +169,7 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
         name="extraction-cluster",
         project_id=PROJECT,
         location="southamerica-east1-a",
+        wait_for_downstream=True,
         depends_on_past=False
     )
 
@@ -175,6 +177,7 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
         task_id="check_extractions",
         python_callable=check_years_not_downloaded,
         provide_context=True,
+        wait_for_downstream=True,
         op_kwargs={"true_option": "some_failed_extraction",
                    "false_option": "extraction_finished"}
     )
@@ -188,11 +191,9 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
         task_id="extraction_finished"
     )
 
-    check_landing_zone >> create_gke_cluster
-    check_landing_zone >> extraction_finished
+    check_landing_zone >> [create_gke_cluster, extraction_finished]
 
     create_gke_cluster >> extract_files >> destroy_gke_cluster
     extract_files >> check_extractions
 
-    check_extractions >> some_failed_extraction
-    check_extractions >> extraction_finished
+    check_extractions >> [some_failed_extraction, extraction_finished]
