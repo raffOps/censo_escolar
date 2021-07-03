@@ -129,8 +129,8 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
     )
 
     with TaskGroup(group_id="extract_files") as extract_files:
+        extract_files_tasks = []
         for year in YEARS:
-
             extract_file = GKEStartPodOperator(
                 task_id=f"extract_file_{year}",
                 project_id=PROJECT,
@@ -161,6 +161,7 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
                            "false_option": f"extract_file_{year}",
                            "year": str(year)}
             )
+            extract_files_tasks.append((extract_file, extraction_year_finished, check_year))
 
             check_year >> extract_file >> extraction_year_finished
             check_year >> extraction_year_finished
