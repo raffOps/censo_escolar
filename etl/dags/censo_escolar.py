@@ -118,7 +118,7 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
         python_callable=check_years_not_downloaded,
         provide_context=True,
         op_kwargs={"true_option": "create_gke_cluster",
-                   "false_option": "extraction_finished"}
+                   "false_option": "extraction_finished_with_sucess"}
     )
 
     create_gke_cluster = GKECreateClusterOperator(
@@ -149,7 +149,8 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
             )
 
             extraction_year_finished = DummyOperator(
-                task_id=f"extraction_year_{year}_finished"
+                task_id=f"extraction_year_{year}_finished",
+                trigger_rule="all_done"
             )
 
             check_year = BranchPythonOperator(
@@ -161,8 +162,7 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
                            "year": year}
             )
 
-            check_year >> extract_file >> extraction_year_finished
-            check_year >> extraction_year_finished
+            check_year >> [extract_file >> extraction_year_finished, extraction_year_finished]
 
     destroy_gke_cluster = GKEDeleteClusterOperator(
         task_id="destroy_gke_cluster",
@@ -179,7 +179,7 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
     #     provide_context=True,
     #     trigger_rule='none_failed_or_skipped',
     #     op_kwargs={"true_option": "some_failed_extraction",
-    #                "false_option": "extraction_finished"}
+    #                "false_option": "extraction_finished_with_sucess"}
     # )
     #
     # some_failed_extraction = PythonOperator(
@@ -187,14 +187,14 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
     #     python_callable=raise_exception_operator
     # )
 
-    extraction_finished = DummyOperator(
-        task_id="extraction_finished",
+    extraction_finished_with_sucess = DummyOperator(
+        task_id="extraction_finished_with_sucess",
         trigger_rule='none_failed'
     )
 
-    check_landing_zone >> [create_gke_cluster, extraction_finished]
+    check_landing_zone >> [create_gke_cluster, extraction_finished_with_sucess]
 
-    create_gke_cluster >> extract_files >> [destroy_gke_cluster, extraction_finished]
+    create_gke_cluster >> extract_files >> [destroy_gke_cluster, extraction_finished_with_sucess]
     # extract_files >> check_extractions
     #
-    # check_extractions >> [some_failed_extraction, extraction_finished]
+    # check_extractions >> [some_failed_extraction, extraction_finished_with_sucess]
