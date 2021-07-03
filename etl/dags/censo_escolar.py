@@ -169,32 +169,32 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
         name="extraction-cluster",
         project_id=PROJECT,
         location="southamerica-east1-a",
-        trigger_rule='none_failed_or_skipped',
+        trigger_rule="all_done",
         depends_on_past=True
     )
 
-    check_extractions = BranchPythonOperator(
-        task_id="check_extractions",
-        python_callable=check_years_not_downloaded,
-        provide_context=True,
-        trigger_rule='none_failed_or_skipped',
-        op_kwargs={"true_option": "some_failed_extraction",
-                   "false_option": "extraction_finished"}
-    )
-
-    some_failed_extraction = PythonOperator(
-        task_id="some_failed_extraction",
-        python_callable=raise_exception_operator
-    )
+    # check_extractions = BranchPythonOperator(
+    #     task_id="check_extractions",
+    #     python_callable=check_years_not_downloaded,
+    #     provide_context=True,
+    #     trigger_rule='none_failed_or_skipped',
+    #     op_kwargs={"true_option": "some_failed_extraction",
+    #                "false_option": "extraction_finished"}
+    # )
+    #
+    # some_failed_extraction = PythonOperator(
+    #     task_id="some_failed_extraction",
+    #     python_callable=raise_exception_operator
+    # )
 
     extraction_finished = DummyOperator(
         task_id="extraction_finished",
-        trigger_rule='none_failed_or_skipped'
+        trigger_rule='none_failed'
     )
 
     check_landing_zone >> [create_gke_cluster, extraction_finished]
 
-    create_gke_cluster >> extract_files >> destroy_gke_cluster
-    extract_files >> check_extractions
-
-    check_extractions >> [some_failed_extraction, extraction_finished]
+    create_gke_cluster >> extract_files >> [destroy_gke_cluster, extraction_finished]
+    # extract_files >> check_extractions
+    #
+    # check_extractions >> [some_failed_extraction, extraction_finished]
