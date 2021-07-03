@@ -50,6 +50,11 @@ def get_cluster_def():
         "machine_type": "e2-micro"
     }
 
+    private_cluster_config = {
+        "enable_private_nodes": True,
+        "master_ipv4_cidr_block": "10.0.0.0/9"
+    }
+
     cluster_def = {
         "name": "extraction-cluster",
         "initial_node_count": 1,
@@ -67,9 +72,9 @@ def check_years_not_downloaded(**context):
     client = storage.Client()
     bucket = client.get_bucket(DATA_LAKE)
     years_in_landing_zone = set([int(blob.name.split("/")[2])
-                           for blob in list(bucket.list_blobs(prefix="landing_zone/censo-escolar"))]
-                          )
-    years_not_in_landing_zone = " ".join(str(year) for year in (set(YEARS) - years_in_landing_zone))
+                           for blob in list(bucket.list_blobs(prefix="landing_zone/censo-escolar"))])
+    years_not_in_landing_zone = " ".join(str(year)
+                                         for year in (set(YEARS) - years_in_landing_zone))
     if years_not_in_landing_zone:
         ti.xcom_push(key="years_not_in_landing_zone", value=years_not_in_landing_zone)
         return true_option
@@ -78,12 +83,11 @@ def check_years_not_downloaded(**context):
 
 
 def check_year_not_downloaded(**context):
+    ti = context["ti"]
     year = context["year"]
     true_option = context["true_option"]
     false_option = context["false_option"]
-    years_not_in_landing_zone = '{{ ti.xcom_pull(task_ids="check_landing_zone", key="years_not_in_landing_zone") }}'
-    print(year)
-    print(years_not_in_landing_zone)
+    years_not_in_landing_zone = ti.xcom_pull(task_ids="check_landing_zone", key="years_not_in_landing_zone")
     if year in years_not_in_landing_zone:
         return true_option
     else:
@@ -148,7 +152,7 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
             extraction_year_finished = DummyOperator(
                 task_id=f"extraction_year_{year}_finished"
             )
-            
+
             check_year = BranchPythonOperator(
                 task_id=f"is_year_{year}_not_downloaded",
                 python_callable=check_year_not_downloaded,
