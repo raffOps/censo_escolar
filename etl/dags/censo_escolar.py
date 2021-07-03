@@ -169,6 +169,7 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
         name="extraction-cluster",
         project_id=PROJECT,
         location="southamerica-east1-a",
+        trigger_rule='none_failed_or_skipped',
         depends_on_past=True
     )
 
@@ -176,7 +177,7 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
         task_id="check_extractions",
         python_callable=check_years_not_downloaded,
         provide_context=True,
-        depends_on_past=True,
+        trigger_rule='none_failed_or_skipped',
         op_kwargs={"true_option": "some_failed_extraction",
                    "false_option": "extraction_finished"}
     )
@@ -187,7 +188,8 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
     )
 
     extraction_finished = DummyOperator(
-        task_id="extraction_finished"
+        task_id="extraction_finished",
+        trigger_rule='none_failed_or_skipped'
     )
 
     check_landing_zone >> [create_gke_cluster, extraction_finished]
