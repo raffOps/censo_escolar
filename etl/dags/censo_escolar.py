@@ -50,10 +50,10 @@ def get_cluster_def():
         "machine_type": "e2-micro"
     }
 
-    private_cluster_config = {
-        "enable_private_nodes": True,
-        "master_ipv4_cidr_block": "10.0.0.0/9"
-    }
+    # private_cluster_config = {
+    #     "enable_private_nodes": True,
+    #     "master_ipv4_cidr_block": "10.0.0.0/9"
+    # }
 
     cluster_def = {
         "name": "extraction-cluster",
@@ -61,7 +61,7 @@ def get_cluster_def():
         "autoscaling": cluster_auto_scaling,
         "location": "southamerica-east1-a",
         "node_config": default_node_pool_config,
-        "private_cluster_config": private_cluster_config
+        #"private_cluster_config": private_cluster_config
     }
     return cluster_def
 
