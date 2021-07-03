@@ -169,15 +169,14 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
         name="extraction-cluster",
         project_id=PROJECT,
         location="southamerica-east1-a",
-        wait_for_downstream=True,
-        depends_on_past=False
+        depends_on_past=True
     )
 
     check_extractions = BranchPythonOperator(
         task_id="check_extractions",
         python_callable=check_years_not_downloaded,
         provide_context=True,
-        wait_for_downstream=True,
+        depends_on_past=True,
         op_kwargs={"true_option": "some_failed_extraction",
                    "false_option": "extraction_finished"}
     )
