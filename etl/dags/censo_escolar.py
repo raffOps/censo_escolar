@@ -150,7 +150,8 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
 
             extraction_year_finished = DummyOperator(
                 task_id=f"extraction_year_{year}_finished",
-                trigger_rule="all_done"
+                trigger_rule="all_done",
+                depends_on_past=True
             )
 
             check_year = BranchPythonOperator(
