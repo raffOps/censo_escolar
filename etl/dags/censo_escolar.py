@@ -170,7 +170,7 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
         name="extraction-cluster",
         project_id=PROJECT,
         location="southamerica-east1-a",
-        trigger_rule="all_done",
+        trigger_rule="none_skipped",
         depends_on_past=True
     )
 
