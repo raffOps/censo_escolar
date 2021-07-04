@@ -162,7 +162,8 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
                            "year": year}
             )
 
-            check_year >> [extract_file >> extraction_year_finished, extraction_year_finished]
+            check_year >> extract_file >> extraction_year_finished
+            check_year >> extraction_year_finished
 
     destroy_gke_cluster = GKEDeleteClusterOperator(
         task_id="destroy_gke_cluster",
