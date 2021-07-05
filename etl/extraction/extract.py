@@ -143,7 +143,7 @@ def upload_files(year):
     bucket = client.get_bucket(DATA_LAKE)
     for file in glob(f"*{year}/DADOS/*.CSV"):
         print(file)
-        csv_name = re.search("DADOS\/(.*)\.", file).group(1) + ".csv"
+        csv_name = (re.search("DADOS\/(.*)\.", file).group(1) + ".csv").lower()
         blob = bucket.blob(f"landing_zone/censo-escolar/{year}/{csv_name}")
         blob.upload_from_filename(file)
 
