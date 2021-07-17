@@ -24,38 +24,57 @@ YEARS = list(range(FIRST_YEAR, LAST_YEAR + 1))
 
 
 def get_cluster_def():
-    cpu = {
-        "resource_type": "cpu",
-        "maximum": 24,
-        "minimum": 1
-    }
-    memory = {
-        "resource_type": "memory",
-        "maximum": 100,
-        "minimum": 1,
+    # cpu = {
+    #     "resource_type": "cpu",
+    #     "maximum": 24,
+    #     "minimum": 1
+    # }
+    # memory = {
+    #     "resource_type": "memory",
+    #     "maximum": 100,
+    #     "minimum": 1,
+    # }
+    #
+    # node_pool_config = {
+    #     "oauth_scopes": ["https://www.googleapis.com/auth/cloud-platform"]
+    # }
+    #
+    # cluster_auto_scaling = {
+    #     "enable_node_autoprovisioning": True,
+    #     "resource_limits": [cpu, memory],
+    #     "autoprovisioning_node_pool_defaults": node_pool_config
+    # }
+    #
+    # default_node_pool_config = {
+    #     "oauth_scopes": ["https://www.googleapis.com/auth/cloud-platform"],
+    #     "machine_type": "e2-micro"
+    # }
+
+    workload_identity_config = {
+        "workload_pool": f"{PROJECT}.svc.id.goog"
     }
 
-    node_pool_config = {
-        "oauth_scopes": ["https://www.googleapis.com/auth/cloud-platform"]
-    }
-
-    cluster_auto_scaling = {
-        "enable_node_autoprovisioning": True,
-        "resource_limits": [cpu, memory],
-        "autoprovisioning_node_pool_defaults": node_pool_config
-    }
-
-    default_node_pool_config = {
-        "oauth_scopes": ["https://www.googleapis.com/auth/cloud-platform"],
-        "machine_type": "e2-micro"
+    node_pool = {
+        "name": "extraction-pool",
+        "initial_node_count": 1,
+        "autoscaling": {
+            "enabled": True,
+            "min_node_count": 1,
+            "max_node_count": 11
+        },
+        "config": {
+            "machine_type": "e2-standard-2"
+        }
     }
 
     cluster_def = {
         "name": "extraction-cluster",
-        "initial_node_count": 1,
-        "autoscaling": cluster_auto_scaling,
+        #"initial_node_count": 1,
+        #"autoscaling": cluster_auto_scaling,
         "location": "southamerica-east1-a",
-        "node_config": default_node_pool_config
+        "node_pools": [node_pool]
+        #"node_config": default_node_pool_config,
+        #"workload_identity_config": workload_identity_config
     }
     return cluster_def
 
@@ -167,20 +186,6 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
         trigger_rule="all_done",
         depends_on_past=True
     )
-
-    # check_extractions = BranchPythonOperator(
-    #     task_id="check_extractions",
-    #     python_callable=check_years_not_downloaded,
-    #     provide_context=True,
-    #     trigger_rule='none_failed_or_skipped',
-    #     op_kwargs={"true_option": "some_failed_extraction",
-    #                "false_option": "extraction_finished_with_sucess"}
-    # )
-    #
-    # some_failed_extraction = PythonOperator(
-    #     task_id="some_failed_extraction",
-    #     python_callable=raise_exception_operator
-    # )
 
     extraction_finished_with_sucess = DummyOperator(
         task_id="extraction_finished_with_sucess",

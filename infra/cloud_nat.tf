@@ -5,7 +5,7 @@
 //}
 //
 //resource "google_compute_address" "address" {
-//  count  = 5
+//  count  = 6
 //  name   = "nat-manual-ip-${count.index}"
 //  region = "southamerica-east1"
 //}
