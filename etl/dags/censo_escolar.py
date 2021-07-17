@@ -65,8 +65,12 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
         task_id="check_landing_zone",
         python_callable=check_years_not_downloaded,
         provide_context=True,
-        op_kwargs={"true_option": "extract_files",
+        op_kwargs={"true_option": "extract_files_dummy",
                    "false_option": "extraction_finished_with_sucess"}
+    )
+
+    extract_files_dummy = DummyOperator(
+        task_id="extract_files_dummy"
     )
 
     with TaskGroup(group_id="extract_files") as extract_files:
@@ -112,7 +116,7 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
         trigger_rule='none_failed'
     )
 
-    check_landing_zone >> [extract_files, extraction_finished_with_sucess]
+    check_landing_zone >> [extract_files_dummy, extraction_finished_with_sucess]
 
-    extract_files >> extraction_finished_with_sucess
+    extract_files_dummy >> extract_files >> extraction_finished_with_sucess
 
