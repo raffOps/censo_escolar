@@ -1,5 +1,4 @@
 import json
-
 from airflow import DAG
 from airflow.utils.dates import days_ago
 from airflow.utils.task_group import TaskGroup
@@ -8,11 +7,7 @@ from airflow.operators.dummy import DummyOperator
 from airflow.operators.python import BranchPythonOperator, PythonOperator
 from kubernetes.client import V1ResourceRequirements
 
-from airflow.providers.google.cloud.operators.kubernetes_engine import (
-    GKECreateClusterOperator,
-    GKEDeleteClusterOperator,
-    GKEStartPodOperator
-)
+from airflow.providers.google.cloud.operators.kubernetes_engine import GKEStartPodOperator
 
 from google.cloud import storage
 
@@ -21,62 +16,6 @@ PROJECT = Variable.get("PROJECT")
 FIRST_YEAR = int(Variable.get("FIRST_YEAR"))
 LAST_YEAR = int(Variable.get("LAST_YEAR"))
 YEARS = list(range(FIRST_YEAR, LAST_YEAR + 1))
-
-
-def get_cluster_def():
-    # cpu = {
-    #     "resource_type": "cpu",
-    #     "maximum": 24,
-    #     "minimum": 1
-    # }
-    # memory = {
-    #     "resource_type": "memory",
-    #     "maximum": 100,
-    #     "minimum": 1,
-    # }
-    #
-    # node_pool_config = {
-    #     "oauth_scopes": ["https://www.googleapis.com/auth/cloud-platform"]
-    # }
-    #
-    # cluster_auto_scaling = {
-    #     "enable_node_autoprovisioning": True,
-    #     "resource_limits": [cpu, memory],
-    #     "autoprovisioning_node_pool_defaults": node_pool_config
-    # }
-    #
-    # default_node_pool_config = {
-    #     "oauth_scopes": ["https://www.googleapis.com/auth/cloud-platform"],
-    #     "machine_type": "e2-micro"
-    # }
-
-    workload_identity_config = {
-        "workload_pool": f"{PROJECT}.svc.id.goog"
-    }
-
-    node_pool = {
-        "name": "extraction-pool",
-        "initial_node_count": 1,
-        "autoscaling": {
-            "enabled": True,
-            "min_node_count": 1,
-            "max_node_count": 11
-        },
-        "config": {
-            "machine_type": "e2-standard-2"
-        }
-    }
-
-    cluster_def = {
-        "name": "extraction-cluster",
-        #"initial_node_count": 1,
-        #"autoscaling": cluster_auto_scaling,
-        "location": "southamerica-east1-a",
-        "node_pools": [node_pool]
-        #"node_config": default_node_pool_config,
-        #"workload_identity_config": workload_identity_config
-    }
-    return cluster_def
 
 
 def check_years_not_downloaded(**context):
@@ -110,18 +49,14 @@ def check_year_downloaded(**context):
 def get_pod_resources():
     return V1ResourceRequirements(
         requests={
-            "cpu": "1",
-            "memory": "4G"
+            "cpu": "1.5",
+            "memory": "5G"
         },
         limits={
-            "cpu": "1",
-            "memory": "4G"
+            "cpu": "1.5",
+            "memory": "5G"
         }
     )
-
-
-def raise_exception_operator():
-    raise Exception("Some failed extraction")
 
 
 with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=days_ago(0)) as dag:
@@ -134,29 +69,23 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
                    "false_option": "extraction_finished_with_sucess"}
     )
 
-    create_gke_cluster = GKECreateClusterOperator(
-        task_id='create_gke_cluster',
-        project_id=PROJECT,
-        location="southamerica-east1-a",
-        body=get_cluster_def()
-    )
-
     with TaskGroup(group_id="extract_files") as extract_files:
         for year in YEARS:
             extract_file = GKEStartPodOperator(
                 task_id=f"extract_file_{year}",
                 project_id=PROJECT,
                 location="southamerica-east1-a",
-                cluster_name="extraction-cluster",
+                cluster_name="extraction",
                 namespace="default",
                 image=f"gcr.io/{PROJECT}/censo_escolar:latest",
                 arguments=["sh", "-c", f'python extract.py {year}'],
                 env_vars={
-                    "DATA_LAKE": DATA_LAKE,
-                    "GOOGLE_APPLICATION_CREDENTIALS": "/var/secrets/google/key.json"
+                    "DATA_LAKE": DATA_LAKE
                 },
                 resources=get_pod_resources(),
                 name=f"extract-file-{year}",
+                node_selectors={"cloud.google.com/gke-nodepool": "extraction"},
+                is_delete_operator_pod=True,
                 get_logs=True,
                 startup_timeout_seconds=600
             )
@@ -178,23 +107,12 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
             check_year >> extract_file >> extraction_year_finished
             check_year >> extraction_year_finished
 
-    destroy_gke_cluster = GKEDeleteClusterOperator(
-        task_id="destroy_gke_cluster",
-        name="extraction-cluster",
-        project_id=PROJECT,
-        location="southamerica-east1-a",
-        trigger_rule="all_done",
-        depends_on_past=True
-    )
-
     extraction_finished_with_sucess = DummyOperator(
         task_id="extraction_finished_with_sucess",
         trigger_rule='none_failed'
     )
 
-    check_landing_zone >> [create_gke_cluster, extraction_finished_with_sucess]
+    check_landing_zone >> [extract_files, extraction_finished_with_sucess]
 
-    create_gke_cluster >> extract_files >> [destroy_gke_cluster, extraction_finished_with_sucess]
-    # extract_files >> check_extractions
-    #
-    # check_extractions >> [some_failed_extraction, extraction_finished_with_sucess]
+    extract_files >> extraction_finished_with_sucess
+
