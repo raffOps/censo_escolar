@@ -49,11 +49,11 @@ def check_year_downloaded(**context):
 def get_pod_resources():
     return V1ResourceRequirements(
         requests={
-            "cpu": "1.5",
+            "cpu": "1.2",
             "memory": "5G"
         },
         limits={
-            "cpu": "1.5",
+            "cpu": "1.2",
             "memory": "5G"
         }
     )
@@ -75,6 +75,16 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
 
     with TaskGroup(group_id="extract_files") as extract_files:
         for year in YEARS:
+
+            check_year = BranchPythonOperator(
+                task_id=f"check_year_{year}",
+                python_callable=check_year_downloaded,
+                provide_context=True,
+                op_kwargs={"true_option": f"extract_files.extraction_year_{year}_finished",
+                           "false_option": f"extract_files.extract_file_{year}",
+                           "year": year}
+            )
+
             extract_file = GKEStartPodOperator(
                 task_id=f"extract_file_{year}",
                 project_id=PROJECT,
@@ -97,15 +107,6 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
             extraction_year_finished = DummyOperator(
                 task_id=f"extraction_year_{year}_finished",
                 trigger_rule="all_success"
-            )
-
-            check_year = BranchPythonOperator(
-                task_id=f"check_year_{year}",
-                python_callable=check_year_downloaded,
-                provide_context=True,
-                op_kwargs={"true_option": f"extract_files.extraction_year_{year}_finished",
-                           "false_option": f"extract_files.extract_file_{year}",
-                           "year": year}
             )
 
             check_year >> extract_file >> extraction_year_finished
