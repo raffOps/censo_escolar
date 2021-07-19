@@ -77,7 +77,8 @@ def unzip_file(year):
 
 def upload_files(year):
     print("Uploading files")
-    client = storage.Client.from_service_account_json(json_credentials_path=CREDENTIALS)
+    #client = storage.Client.from_service_account_json(json_credentials_path=CREDENTIALS)
+    client = storage.Client()
     bucket = client.get_bucket(DATA_LAKE)
     for file in glob(f"*{year}/DADOS/*.CSV"):
         print(file)
