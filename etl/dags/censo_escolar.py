@@ -60,7 +60,6 @@ def get_pod_resources():
 
 
 with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=days_ago(0)) as dag:
-
     check_landing_zone = BranchPythonOperator(
         task_id="check_landing_zone",
         python_callable=check_years_not_downloaded,
@@ -75,7 +74,6 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
 
     with TaskGroup(group_id="extract_files") as extract_files:
         for year in YEARS:
-
             check_year = BranchPythonOperator(
                 task_id=f"check_year_{year}",
                 python_callable=check_year_downloaded,
@@ -101,7 +99,10 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
                 node_selectors={"cloud.google.com/gke-nodepool": "extraction"},
                 is_delete_operator_pod=True,
                 get_logs=True,
-                startup_timeout_seconds=600
+                startup_timeout_seconds=600,
+                annotations={'iam.gke.io/gcp-service-account':
+                                 f'extraction@{PROJECT}.iam.gserviceaccount.com'
+                             }
             )
 
             extraction_year_finished = DummyOperator(
@@ -120,4 +121,3 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
     check_landing_zone >> [extract_files_dummy, extraction_finished_with_sucess]
 
     extract_files_dummy >> extract_files >> extraction_finished_with_sucess
-
