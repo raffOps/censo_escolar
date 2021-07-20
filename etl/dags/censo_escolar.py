@@ -49,12 +49,12 @@ def check_year_downloaded(**context):
 def get_pod_resources():
     return V1ResourceRequirements(
         requests={
-            "cpu": "1.2",
-            "memory": "5G"
+            "cpu": "0.6",
+            "memory": "1G"
         },
         limits={
-            "cpu": "1.2",
-            "memory": "5G"
+            "cpu": "0.6",
+            "memory": "1G"
         }
     )
 
@@ -97,7 +97,7 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
                 resources=get_pod_resources(),
                 name=f"extract-file-{year}",
                 node_selectors={"cloud.google.com/gke-nodepool": "extraction"},
-                is_delete_operator_pod=True,
+                #is_delete_operator_pod=True,
                 get_logs=True,
                 startup_timeout_seconds=600,
                 annotations={'iam.gke.io/gcp-service-account':
