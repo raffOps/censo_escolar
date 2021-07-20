@@ -5,9 +5,13 @@ from airflow.utils.task_group import TaskGroup
 from airflow.models import Variable
 from airflow.operators.dummy import DummyOperator
 from airflow.operators.python import BranchPythonOperator, PythonOperator
+from airflow.kubernetes.secret import Secret
+from airflow.providers.google.cloud.operators.kubernetes_engine import GKEStartPodOperator
+
 from kubernetes.client import V1ResourceRequirements
 
-from airflow.providers.google.cloud.operators.kubernetes_engine import GKEStartPodOperator
+
+
 
 from google.cloud import storage
 
@@ -16,6 +20,14 @@ PROJECT = Variable.get("PROJECT")
 FIRST_YEAR = int(Variable.get("FIRST_YEAR"))
 LAST_YEAR = int(Variable.get("LAST_YEAR"))
 YEARS = list(range(FIRST_YEAR, LAST_YEAR + 1))
+
+
+def get_secret():
+    return Secret(
+        deploy_type='volume',
+        deploy_target='/var/secrets/google',
+        secret='gcs-credentials',
+        key='key.json')
 
 
 def check_years_not_downloaded(**context):
@@ -92,7 +104,8 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
                 image=f"gcr.io/{PROJECT}/censo_escolar:latest",
                 arguments=["sh", "-c", f'python extract.py {year}'],
                 env_vars={
-                    "DATA_LAKE": DATA_LAKE
+                    "DATA_LAKE": DATA_LAKE,
+                    'GOOGLE_APPLICATION_CREDENTIALS': '/var/secrets/google/key.json'
                 },
                 resources=get_pod_resources(),
                 name=f"extract-file-{year}",
@@ -100,9 +113,7 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
                 #is_delete_operator_pod=True,
                 get_logs=True,
                 startup_timeout_seconds=600,
-                annotations={'iam.gke.io/gcp-service-account':
-                                 f'extraction@{PROJECT}.iam.gserviceaccount.com'
-                             }
+                secret=[get_secret()]
             )
 
             extraction_year_finished = DummyOperator(
