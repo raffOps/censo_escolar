@@ -1,12 +1,12 @@
 # create service accounts
 resource "google_service_account" "service_account" {
-  account_id = "extraction"
-  display_name = "extraction"
+  account_id = "etl-service-account"
+  display_name = "etl-service-account"
   project      = var.project
 }
 
 # conditionally assign billing user role on a specific billing account
-resource "google_project_iam_member" "billing_user" {
+resource "google_project_iam_member" "member" {
   project = var.project
   role               = "roles/storage.admin"
   member             = "serviceAccount:${google_service_account.service_account.email}"

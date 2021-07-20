@@ -30,8 +30,9 @@ resource "google_container_node_pool" "extraction" {
   location = "southamerica-east1-a"
 
   node_config {
-    machine_type = "e2-standard-2"
+    machine_type = "e2-standard-4"
     oauth_scopes = ["https://www.googleapis.com/auth/cloud-platform"]
+    service_account = google_service_account.service_account.email
   }
 
   autoscaling {
