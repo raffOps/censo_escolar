@@ -96,7 +96,7 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
         task_id="check_landing_zone",
         python_callable=check_years_not_downloaded,
         provide_context=True,
-        op_kwargs={"true_option": "extract_files_dummy",
+        op_kwargs={"true_option": 'create_gke_cluster',
                    "false_option": "extraction_finished_with_sucess"}
     )
 
