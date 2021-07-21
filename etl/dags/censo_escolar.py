@@ -60,7 +60,7 @@ def check_years_not_downloaded(**context):
     years_not_in_landing_zone = set(YEARS) - years_in_landing_zone
     if years_not_in_landing_zone:
         ti.xcom_push(key="years_in_landing_zone", value=json.dumps(list(years_in_landing_zone)))
-        ti.xcom_push(key="cluster_size", value=calculate_cluster_size(years_not_in_landing_zone))
+        ti.xcom_push(key="cluster_size", value=calculate_cluster_size(len(years_not_in_landing_zone)))
         return true_option
     else:
         return false_option
