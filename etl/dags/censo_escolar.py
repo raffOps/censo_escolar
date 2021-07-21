@@ -34,8 +34,7 @@ def get_cluster_def():
 
     cluster_def = {
         "name": "extraction-cluster",
-        "initial_node_count": calculate_cluster_size("""{{ ti.xcom_pull(task_ids="check_landing_zone", 
-                                          key="amount_years_not_in_landing_zone") }}"""),
+        "initial_node_count": '{{ ti.xcom_pull(task_ids="check_landing_zone", key="cluster_size") }}',
         "location": "southamerica-east1-a",
         "node_config": default_node_pool_config,
     }
@@ -61,7 +60,7 @@ def check_years_not_downloaded(**context):
     years_not_in_landing_zone = set(YEARS) - years_in_landing_zone
     if years_not_in_landing_zone:
         ti.xcom_push(key="years_in_landing_zone", value=json.dumps(list(years_in_landing_zone)))
-        ti.xcom_push(key="amount_years_not_in_landing_zone", value=len(years_not_in_landing_zone))
+        ti.xcom_push(key="cluster_size", value=calculate_cluster_size(years_not_in_landing_zone))
         return true_option
     else:
         return false_option
