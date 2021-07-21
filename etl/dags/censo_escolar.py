@@ -23,7 +23,7 @@ YEARS = list(range(FIRST_YEAR, LAST_YEAR + 1))
 
 
 def calculate_cluster_size():
-    amount_years = '{{ ti.xcom_pull(ask_ids="check_landing_zone") }}'
+    amount_years = '{{ ti.xcom_pull(task_ids="check_landing_zone", key="amount_years_not_in_landing_zone") }}'
     return int(int(amount_years)/2) + 2
 
 
@@ -61,6 +61,7 @@ def check_years_not_downloaded(**context):
     years_not_in_landing_zone = set(YEARS) - years_in_landing_zone
     if years_not_in_landing_zone:
         ti.xcom_push(key="years_in_landing_zone", value=json.dumps(list(years_in_landing_zone)))
+        ti.xcom_push(key="amount_years_not_in_landing_zone", value=len(years_not_in_landing_zone))
         return true_option
     else:
         return false_option
