@@ -1,4 +1,5 @@
 import json
+from math import ceil
 from airflow import DAG
 from airflow.utils.dates import days_ago
 from airflow.utils.task_group import TaskGroup
@@ -12,7 +13,6 @@ from airflow.providers.google.cloud.operators.kubernetes_engine import (
     GKEDeleteClusterOperator
 )
 from kubernetes.client import V1ResourceRequirements
-
 from google.cloud import storage
 
 DATA_LAKE = Variable.get("DATA_LAKE")
@@ -23,7 +23,7 @@ YEARS = list(range(FIRST_YEAR, LAST_YEAR + 1))
 
 
 def calculate_cluster_size(amount_years):
-    return int(int(amount_years)/2) + 2
+    return ceil(int(amount_years)/2) + 1
 
 
 def get_cluster_def():
