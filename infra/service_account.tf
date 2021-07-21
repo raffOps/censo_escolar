@@ -12,6 +12,16 @@ resource "google_project_iam_member" "member" {
   member             = "serviceAccount:${google_service_account.service_account.email}"
 }
 
-resource "google_service_account_key" "keys" {
-  service_account_id = google_service_account.service_account.email
+//resource "google_service_account_key" "keys" {
+//  service_account_id = google_service_account.service_account.email
+//}
+
+
+resource "null_resource" "create_secret" {
+  provisioner "local-exec" {
+    command = "./create_secret.sh ${var.project} ${google_composer_environment.composer.config[0].gke_cluster}"
+    interpreter = ["/bin/bash", "-c"]
+  }
+  depends_on = [google_project_iam_member.member]
 }
+

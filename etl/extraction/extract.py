@@ -14,7 +14,10 @@ if os.getenv("DATA_LAKE"):
 else:
     DATA_LAKE = "rjr-teste"
 
-CREDENTIALS = "key.json"
+if os.getenv("GOOGLE_APPLICATION_CREDENTIALS"):
+    CREDENTIALS = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+else:
+    CREDENTIALS = "./key.json"
 
 
 def get_url(year):
@@ -77,8 +80,7 @@ def unzip_file(year):
 
 def upload_files(year):
     print("Uploading files")
-    #client = storage.Client.from_service_account_json(json_credentials_path=CREDENTIALS)
-    client = storage.Client()
+    client = storage.Client.from_service_account_json(json_credentials_path=CREDENTIALS)
     bucket = client.get_bucket(DATA_LAKE)
     for file in glob(f"*{year}/DADOS/*.CSV"):
         print(file)

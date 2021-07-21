@@ -4,5 +4,4 @@ build {
 context = "../etl/extraction"
 dockerfile = "Dockerfile"
   }
-  #depends_on = [null_resource.credentials]
 }

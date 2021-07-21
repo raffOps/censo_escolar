@@ -61,11 +61,11 @@ def check_year_downloaded(**context):
 def get_pod_resources():
     return V1ResourceRequirements(
         requests={
-            "cpu": "2",
+            "cpu": "1.5",
             "memory": "3G"
         },
         limits={
-            "cpu": "2",
+            "cpu": "1.5",
             "memory": "3G"
         }
     )
