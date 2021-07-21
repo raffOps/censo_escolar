@@ -6,12 +6,12 @@ from airflow.models import Variable
 from airflow.operators.dummy import DummyOperator
 from airflow.operators.python import BranchPythonOperator, PythonOperator
 from airflow.kubernetes.secret import Secret
-from airflow.providers.google.cloud.operators.kubernetes_engine import GKEStartPodOperator
-
+from airflow.providers.google.cloud.operators.kubernetes_engine import (
+    GKEStartPodOperator,
+    GKECreateClusterOperator,
+    GKEDeleteClusterOperator
+)
 from kubernetes.client import V1ResourceRequirements
-
-
-
 
 from google.cloud import storage
 
@@ -20,6 +20,26 @@ PROJECT = Variable.get("PROJECT")
 FIRST_YEAR = int(Variable.get("FIRST_YEAR"))
 LAST_YEAR = int(Variable.get("LAST_YEAR"))
 YEARS = list(range(FIRST_YEAR, LAST_YEAR + 1))
+
+
+def calculate_cluster_size():
+    amount_years = '{{ ti.xcom_pull(ask_ids="check_landing_zone") }}'
+    return int(int(amount_years)/2) + 2
+
+
+def get_cluster_def():
+    default_node_pool_config = {
+        "oauth_scopes": ["https://www.googleapis.com/auth/cloud-platform"],
+        "machine_type": "e2-standard-4"
+    }
+
+    cluster_def = {
+        "name": "extraction-cluster",
+        "initial_node_count": calculate_cluster_size(),
+        "location": "southamerica-east1-a",
+        "node_config": default_node_pool_config,
+    }
+    return cluster_def
 
 
 def get_secret():
@@ -80,8 +100,11 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
                    "false_option": "extraction_finished_with_sucess"}
     )
 
-    extract_files_dummy = DummyOperator(
-        task_id="extract_files_dummy"
+    create_gke_cluster = GKECreateClusterOperator(
+        task_id='create_gke_cluster',
+        project_id=PROJECT,
+        location="southamerica-east1-a",
+        body=get_cluster_def()
     )
 
     with TaskGroup(group_id="extract_files") as extract_files:
@@ -124,11 +147,20 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
             check_year >> extract_file >> extraction_year_finished
             check_year >> extraction_year_finished
 
+    destroy_gke_cluster = GKEDeleteClusterOperator(
+        task_id="destroy_gke_cluster",
+        name="extraction-cluster",
+        project_id=PROJECT,
+        location="southamerica-east1-a",
+        trigger_rule="all_done",
+        depends_on_past=True
+    )
+
     extraction_finished_with_sucess = DummyOperator(
         task_id="extraction_finished_with_sucess",
         trigger_rule='none_failed'
     )
 
-    check_landing_zone >> [extract_files_dummy, extraction_finished_with_sucess]
+    check_landing_zone >> [create_gke_cluster, extraction_finished_with_sucess]
 
-    extract_files_dummy >> extract_files >> extraction_finished_with_sucess
+    create_gke_cluster >> extract_files >> [destroy_gke_cluster, extraction_finished_with_sucess]
