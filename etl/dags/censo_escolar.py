@@ -33,7 +33,7 @@ def get_cluster_def():
     }
 
     cluster_def = {
-        "name": "extraction-cluster",
+        "name": "extraction",
         "initial_node_count": '{{ ti.xcom_pull(task_ids="check_landing_zone", key="cluster_size") }}',
         "location": "southamerica-east1-a",
         "node_config": default_node_pool_config,
