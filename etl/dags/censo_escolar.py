@@ -41,12 +41,12 @@ def get_cluster_def():
     return cluster_def
 
 
-def get_secret():
-    return Secret(
-        deploy_type='volume',
-        deploy_target='/var/secrets/google',
-        secret='gcs-credentials',
-        key='key.json')
+# def get_secret():
+#     return Secret(
+#         deploy_type='volume',
+#         deploy_target='/var/secrets/google',
+#         secret='gcs-credentials',
+#         key='key.json')
 
 
 def check_years_not_downloaded(**context):
@@ -135,7 +135,7 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
                 #is_delete_operator_pod=True,
                 get_logs=True,
                 startup_timeout_seconds=600,
-                secrets=[get_secret()]
+                #secrets=[get_secret()]
             )
 
             extraction_year_finished = DummyOperator(
