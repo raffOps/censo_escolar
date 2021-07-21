@@ -22,8 +22,7 @@ LAST_YEAR = int(Variable.get("LAST_YEAR"))
 YEARS = list(range(FIRST_YEAR, LAST_YEAR + 1))
 
 
-def calculate_cluster_size():
-    amount_years = '{{ ti.xcom_pull(task_ids="check_landing_zone", key="amount_years_not_in_landing_zone") }}'
+def calculate_cluster_size(amount_years):
     return int(int(amount_years)/2) + 2
 
 
@@ -35,7 +34,8 @@ def get_cluster_def():
 
     cluster_def = {
         "name": "extraction-cluster",
-        "initial_node_count": calculate_cluster_size(),
+        "initial_node_count": calculate_cluster_size("""{{ ti.xcom_pull(task_ids="check_landing_zone", 
+                                          key="amount_years_not_in_landing_zone") }}"""),
         "location": "southamerica-east1-a",
         "node_config": default_node_pool_config,
     }
