@@ -33,7 +33,7 @@ def get_cluster_def():
     }
 
     cluster_def = {
-        "name": "extraction",
+        "name": "extraction-censo-escolar",
         "initial_node_count": '{{ ti.xcom_pull(task_ids="check_landing_zone", key="cluster_size") }}',
         "location": "southamerica-east1-a",
         "node_config": default_node_pool_config,
@@ -122,7 +122,7 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
                 task_id=f"extract_file_{year}",
                 project_id=PROJECT,
                 location="southamerica-east1-a",
-                cluster_name="extraction",
+                cluster_name="extraction-censo-escolar",
                 namespace="default",
                 image=f"gcr.io/{PROJECT}/censo_escolar:latest",
                 arguments=["sh", "-c", f'python extract.py {year}'],
@@ -148,7 +148,7 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
 
     destroy_gke_cluster = GKEDeleteClusterOperator(
         task_id="destroy_gke_cluster",
-        name="extraction",
+        name="extraction-censo-escolar",
         project_id=PROJECT,
         location="southamerica-east1-a",
         trigger_rule="all_done",
