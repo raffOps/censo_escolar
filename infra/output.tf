@@ -1,15 +1,7 @@
-output "bucket_bronze" {
-  value = google_storage_bucket.bucket-bronze.url
+output "data_lake" {
+  value = google_storage_bucket.data-lake.url
 }
 
-output "bucket_silver" {
-  value = google_storage_bucket.bucket-silver.url
+output "composer" {
+  value = google_composer_environment.composer.config[0].airflow_uri
 }
-
-output "bucket_gold" {
-  value = google_storage_bucket.bucket-gold.url
-}
-
-//output "composer" {
-//  value = google_composer_environment.composer.config[0].airflow_uri
-//}

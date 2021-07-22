@@ -1,64 +1,63 @@
 import os
+import re
 import sys
-import requests
 from glob import glob
-from datetime import datetime
-from io import BytesIO
 from time import sleep
 from zipfile import ZipFile, BadZipfile
-from hashlib import md5
-import re
-import pandas as pd
-import pyarrow.parquet as pq
-import pyarrow as pa
-import time
+import subprocess
 
+import requests
 from google.cloud import storage
 
-if os.getenv("CHUNCKSIZE"):
-    CHUNCKSIZE = 100000
-
+if os.getenv("DATA_LAKE"):
+    DATA_LAKE = os.getenv("DATA_LAKE")
 else:
-    CHUNCKSIZE = 100000
+    DATA_LAKE = "rjr-teste"
 
-if os.getenv("BUCKET"):
-    BUCKET = os.getenv("BUCKET")
-else:
-    BUCKET = "rjr-teste1"
-
-# DICT_URLS = {
-#     "2020": "https://download.inep.gov.br/dados_abertos/microdados_censo_escolar_2020.zip",
-#     "2019": "https://download.inep.gov.br/microdados/microdados_educacao_basica_2019.zip",
-#     "2018": "https://download.inep.gov.br/microdados/microdados_educacao_basica_2018.zip",
-#     "2017": "https://download.inep.gov.br/microdados/micro_censo_escolar_2017.zip",
-#     "2016": "https://download.inep.gov.br/microdados/micro_censo_escolar_2016.zip",
-#     "2015": "https://download.inep.gov.br/microdados/micro_censo_escolar_2015.zip",
-#     "2014": "https://download.inep.gov.br/microdados/micro_censo_escolar_2014.zip",
-#     "2013": "https://download.inep.gov.br/microdados/micro_censo_escolar_2013.zip",
-#     "2012": "https://download.inep.gov.br/microdados/micro_censo_escolar_2012.zip",
-#     "2011": "https://download.inep.gov.br/microdados/micro_censo_escolar_2011.zip",
-#     "2010": "https://download.inep.gov.br/microdados/micro_censo_escolar_2010.zip"
-# }
+CREDENTIALS = "./key.json"
 
 
 def get_url(year):
-    if year in "2019 2018":
-        return f"https://download.inep.gov.br/microdados/microdados_educacao_basica_{year}.zip"
+    if year == "2020":
+        url = "https://download.inep.gov.br/dados_abertos/microdados_censo_escolar_2020.zip"
+    elif year in "2019 2018":
+        url = f"https://download.inep.gov.br/microdados/microdados_educacao_basica_{year}.zip"
     else:
-        return f"https://download.inep.gov.br/microdados/micro_censo_escolar_{year}.zip"
+        url = f"https://download.inep.gov.br/microdados/micro_censo_escolar_{year}.zip"
+
+    return url
+
+
+def make_request(url):
+    with requests.get(url, stream=True) as r:
+        r.raise_for_status()
+        with open(f"{year}.zip", 'wb') as f:
+            for chunk in r.iter_content(chunk_size=8192):
+                f.write(chunk)
+
+
+def test_zip(year):
+    ZipFile(f"{year}.zip", 'r')
 
 
 def download_file(year):
     url = get_url(year)
     print(f"Downloading {url}")
-    with requests.get(url, stream=True) as r:
-        r.raise_for_status()
-        with open("file.zip", 'wb') as f:
-            for chunk in r.iter_content(chunk_size=8192):
-                # If you have chunk encoded response uncomment if
-                # and set chunk_size parameter to None.
-                #if chunk:
-                f.write(chunk)
+    try:
+        make_request(url)
+        test_zip(year)
+    except (requests.exceptions.ChunkedEncodingError, BadZipfile) as e:
+        sleep(100)
+        try:
+            if f"{year}.zip" in os.listdir():
+                os.remove(f"{year}.zip")
+            make_request(url)
+            test_zip(year)
+        except Exception as e:
+            raise Exception(f"Download error: {e}")
+    except Exception as e:
+        raise Exception(f"Download error: {e}")
+
     print("Download complete")
 
 
@@ -66,46 +65,34 @@ def unzip_file(year):
     print(f"Unziping")
     with ZipFile(f"{year}.zip", 'r') as zip:
         zip.extractall()
+
+    recursives_zips = [file for file in glob(f"*{year}/DADOS/*")
+                       if ".rar" in file or ".zip" in file]
+    for recursive_zip_name in recursives_zips:
+        subprocess.run(["unar", "-o", f"{year}/DADOS",  recursive_zip_name])
+        os.remove(f"{recursive_zip_name}")
+
     print("Unzip complete")
 
-# def check_files():
-#     hashes = open(os.listdir(".*MD5.*.txt")[0])
-#     for file in os.listdir("*.csv"):
-#         md5(file).hexdigest()
 
+def upload_files(year):
+    print("Uploading files")
+    client = storage.Client.from_service_account_json(json_credentials_path=CREDENTIALS)
+    bucket = client.get_bucket(DATA_LAKE)
+    for file in glob(f"*{year}/DADOS/*.CSV"):
+        print(file)
+        csv_name = (re.search("DADOS\/(.*)\.", file).group(1) + ".csv").lower()
+        blob = bucket.blob(f"landing_zone/censo-escolar/{year}/{csv_name}")
+        blob.upload_from_filename(file)
 
-def csv_to_parquet(compression):
-    start_time = time.time()
-    for file in glob("./microdados_educacao_basica_2019/DADOS/*.CSV"):
-        parquet_name = f"{compression}/" + re.search("DADOS\/(.*)\.", file).group(1) + ".parquet"
-        pqwriter = None
-        for i, df in enumerate(pd.read_csv(file, chunksize=CHUNCKSIZE)):
-            table = pa.Table.from_pandas(df)
-            # for the first chunk of records
-            if i == 0:
-                # create a parquet write object giving it an output file
-                pqwriter = pq.ParquetWriter(parquet_name, table.schema, compression=compression)
-            pqwriter.write_table(table)
-
-        # close the parquet writer
-        if pqwriter:
-            pqwriter.close()
-        print(f"{parquet_name} criado")
-
-    print("\n\n")
-    print(compression)
-    print("--- %s seconds ---" % (time.time() - start_time))
-
-# def upload_files():
-#     for file in glob("./*.parquet"):
-#         cl
+    print("Upload complete")
 
 
 if __name__ == "__main__":
     year = sys.argv[1]
-    compression = "snappy"
+
     download_file(year)
     unzip_file(year)
-    #csv_to_parquet(compression)
+    upload_files(year)
 
 

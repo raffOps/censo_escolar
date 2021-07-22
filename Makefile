@@ -13,10 +13,14 @@ docker:
 				gnupg \
 				lsb-release
 	sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+	echo \
+	  "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu \
+	  $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
 	sudo apt-get update
-	sudo apt-get install docker-ce docker-ce-cli containerd.io
+	sudo apt-get install docker-ce docker-compose docker-ce-cli containerd.io
+	sudo groupadd docker
+	sudo usermod -aG docker $USER
 	sudo docker run hello-world
-
 
 gcp:
 	sudo echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | tee -a /etc/apt/sources.list.d/google-cloud-sdk.list
@@ -25,6 +29,6 @@ gcp:
 	sudo apt-get update && apt-get install google-cloud-sdk -y
 
 
-service_account:
-	gcloud iam service-accounts create docker-rais --display-name="docker_rais"
-	gcloud iam service-accounts keys create key.json --iam-account docker-rais@ <<PROJETO>>.iam.gserviceaccount.com
+#service_account:
+#	gcloud iam service-accounts create docker-rais --display-name="docker_rais"
+#	gcloud iam service-accounts keys create key.json --iam-account docker-rais@ <<PROJETO>>.iam.gserviceaccount.com

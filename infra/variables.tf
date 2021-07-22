@@ -1,3 +1,7 @@
 variable "project" {
-  default = "censo-escolar-317700"
+  default = "rjr-portal-da-transparencia"
+}
+
+variable "git_user" {
+  default = "rjribeiro"
 }

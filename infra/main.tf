@@ -2,9 +2,15 @@ terraform {
   required_providers {
     docker = {
       source = "kreuzwerker/docker"
+      version = "2.13.0"
     }
     google = {
       source = "hashicorp/google"
+      version = "3.73.0"
+    }
+    null = {
+      source = "hashicorp/null"
+      version = "3.1.0"
     }
   }
 }
@@ -22,13 +28,3 @@ provider "docker" {
     config_file = pathexpand("~/.docker/config.json")
   }
 }
-
-resource "docker_registry_image" "container-extraction1" {
-name = "gcr.io/${var.project}/licitacoes:latest"
-build {
-context = "../etl/extraction"
-dockerfile = "Dockerfile"
-  }
-}
-
-
