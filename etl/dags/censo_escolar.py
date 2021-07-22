@@ -148,7 +148,7 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
 
     destroy_gke_cluster = GKEDeleteClusterOperator(
         task_id="destroy_gke_cluster",
-        name="extraction-cluster",
+        name="extraction",
         project_id=PROJECT,
         location="southamerica-east1-a",
         trigger_rule="all_done",
