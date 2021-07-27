@@ -6,11 +6,11 @@ from airflow.utils.task_group import TaskGroup
 from airflow.models import Variable
 from airflow.operators.dummy import DummyOperator
 from airflow.operators.python import BranchPythonOperator, PythonOperator
-from airflow.kubernetes.secret import Secret
 from airflow.providers.google.cloud.operators.kubernetes_engine import (
     GKEStartPodOperator,
     GKECreateClusterOperator,
-    GKEDeleteClusterOperator
+    GKEDeleteClusterOperator,
+    DataprocCreateClusterOperator
 )
 from kubernetes.client import V1ResourceRequirements
 from google.cloud import storage
@@ -26,41 +26,47 @@ def calculate_cluster_size(amount_years):
     return ceil(int(amount_years)/2) + 1
 
 
-def get_cluster_def():
-    default_node_pool_config = {
-        "oauth_scopes": ["https://www.googleapis.com/auth/cloud-platform"],
-        "machine_type": "e2-standard-4"
-    }
-
+def get_gke_cluster_def():
     cluster_def = {
         "name": "extraction-censo-escolar",
         "initial_node_count": '{{ ti.xcom_pull(task_ids="check_landing_zone", key="cluster_size") }}',
         "location": "southamerica-east1-a",
-        "node_config": default_node_pool_config,
+        "node_config": {
+            "oauth_scopes": ["https://www.googleapis.com/auth/cloud-platform"],
+            "machine_type": "e2-standard-4"
+        },
     }
     return cluster_def
 
 
-# def get_secret():
-#     return Secret(
-#         deploy_type='volume',
-#         deploy_target='/var/secrets/google',
-#         secret='gcs-credentials',
-#         key='key.json')
+def get_dataproc_cluster_def():
+    cluster_def = {
+        "master_config": {
+            "num_instances": 1,
+            "machine_type_uri": "n1-standard-4",
+            "disk_config": {"boot_disk_type": "pd-standard", "boot_disk_size_gb": 1024},
+        },
+        "worker_config": {
+            "num_instances": 5,
+            "machine_type_uri": "n1-standard-4",
+            "disk_config": {"boot_disk_type": "pd-standard", "boot_disk_size_gb": 1024},
+        },
+    }
+    return cluster_def
 
 
-def check_years_not_downloaded(**context):
+def check_files(**context):
     ti = context["ti"]
     true_option = context["true_option"]
     false_option = context["false_option"]
     client = storage.Client()
     bucket = client.get_bucket(DATA_LAKE)
-    years_in_landing_zone = set([int(blob.name.split("/")[2])
-                             for blob in list(bucket.list_blobs(prefix="landing_zone/censo-escolar"))])
-    years_not_in_landing_zone = set(YEARS) - years_in_landing_zone
-    if years_not_in_landing_zone:
-        ti.xcom_push(key="years_in_landing_zone", value=json.dumps(list(years_in_landing_zone)))
-        ti.xcom_push(key="cluster_size", value=calculate_cluster_size(len(years_not_in_landing_zone)))
+    years_in_this_zone = set([int(blob.name.split("/")[2])
+                             for blob in list(bucket.list_blobs(prefix=f"{context['zone']}/censo-escolar"))])
+    years_not_in_this_zone = set(YEARS) - years_in_this_zone
+    if years_not_in_this_zone:
+        ti.xcom_push(key="years", value=json.dumps(list(years_in_this_zone)))
+        ti.xcom_push(key="cluster_size", value=calculate_cluster_size(len(years_not_in_this_zone)))
         return true_option
     else:
         return false_option
@@ -71,7 +77,7 @@ def check_year_downloaded(**context):
     year = context["year"]
     true_option = context["true_option"]
     false_option = context["false_option"]
-    years_in_landing_zone = ti.xcom_pull(task_ids="check_landing_zone", key="years_in_landing_zone")
+    years_in_landing_zone = ti.xcom_pull(task_ids="check_landing_zone", key="years")
     if year in json.loads(years_in_landing_zone):
         return true_option
     else:
@@ -94,17 +100,18 @@ def get_pod_resources():
 with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=days_ago(0)) as dag:
     check_landing_zone = BranchPythonOperator(
         task_id="check_landing_zone",
-        python_callable=check_years_not_downloaded,
+        python_callable=check_files,
         provide_context=True,
         op_kwargs={"true_option": 'create_gke_cluster',
-                   "false_option": "extraction_finished_with_sucess"}
+                   "false_option": "extraction_finished_with_sucess",
+                   "zone": "landing_zone"}
     )
 
     create_gke_cluster = GKECreateClusterOperator(
         task_id='create_gke_cluster',
         project_id=PROJECT,
         location="southamerica-east1-a",
-        body=get_cluster_def()
+        body=get_gke_cluster_def()
     )
 
     with TaskGroup(group_id="extract_files") as extract_files:
@@ -132,10 +139,8 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
                 },
                 resources=get_pod_resources(),
                 name=f"extract-file-{year}",
-                #is_delete_operator_pod=True,
                 get_logs=True,
-                startup_timeout_seconds=600,
-                #secrets=[get_secret()]
+                startup_timeout_seconds=600
             )
 
             extraction_year_finished = DummyOperator(
@@ -163,3 +168,21 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
     check_landing_zone >> [create_gke_cluster, extraction_finished_with_sucess]
 
     create_gke_cluster >> extract_files >> [destroy_gke_cluster, extraction_finished_with_sucess]
+
+
+    check_processing_zone = BranchPythonOperator(
+        task_id="check_processing_zone",
+        python_callable=check_files,
+        provide_context=True,
+        op_kwargs={"true_option": 'create_dataproc_cluster',
+                   "false_option": "transformation_finished_with_sucess",
+                   "zone": "processing_zone"}
+    )
+
+    create_cluster = DataprocCreateClusterOperator(
+        task_id="create_cluster",
+        project_id=PROJECT,
+        cluster_config=get_dataproc_cluster_def(),
+        region="us-central1-a",
+        cluster_name="censo-escolar",
+    )

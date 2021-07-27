@@ -1,6 +1,6 @@
 resource "google_storage_bucket" "data-lake" {
   name          = "${var.project}"
-  location      = "EU"
+  location      = "US"
   force_destroy = false
 }
 
