@@ -10,7 +10,7 @@ from airflow.providers.google.cloud.operators.kubernetes_engine import (
     GKEStartPodOperator,
     GKECreateClusterOperator,
     GKEDeleteClusterOperator,
-    DataprocCreateClusterOperator
+    #DataprocCreateClusterOperator
 )
 from kubernetes.client import V1ResourceRequirements
 from google.cloud import storage
@@ -28,7 +28,7 @@ def calculate_cluster_size(amount_years):
 
 def get_gke_cluster_def():
     cluster_def = {
-        "name": "extraction-censo-escolar",
+        "name": "censo-escolar-extraction",
         "initial_node_count": '{{ ti.xcom_pull(task_ids="check_landing_zone", key="cluster_size") }}',
         "location": "southamerica-east1-a",
         "node_config": {
@@ -129,13 +129,12 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
                 task_id=f"extract_file_{year}",
                 project_id=PROJECT,
                 location="southamerica-east1-a",
-                cluster_name="extraction-censo-escolar",
+                cluster_name="censo-escolar-extraction",
                 namespace="default",
-                image=f"gcr.io/{PROJECT}/censo_escolar:latest",
+                image=f"gcr.io/{PROJECT}/censo_escolar_extraction:latest",
                 arguments=["sh", "-c", f'python extract.py {year}'],
                 env_vars={
                     "DATA_LAKE": DATA_LAKE,
-                    'GOOGLE_APPLICATION_CREDENTIALS': '/var/secrets/google/key.json'
                 },
                 resources=get_pod_resources(),
                 name=f"extract-file-{year}",
@@ -153,7 +152,7 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
 
     destroy_gke_cluster = GKEDeleteClusterOperator(
         task_id="destroy_gke_cluster",
-        name="extraction-censo-escolar",
+        name="censo-escolar-extraction",
         project_id=PROJECT,
         location="southamerica-east1-a",
         trigger_rule="all_done",
@@ -170,19 +169,19 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
     create_gke_cluster >> extract_files >> [destroy_gke_cluster, extraction_finished_with_sucess]
 
 
-    check_processing_zone = BranchPythonOperator(
-        task_id="check_processing_zone",
-        python_callable=check_files,
-        provide_context=True,
-        op_kwargs={"true_option": 'create_dataproc_cluster',
-                   "false_option": "transformation_finished_with_sucess",
-                   "zone": "processing_zone"}
-    )
+    # check_processing_zone = BranchPythonOperator(
+    #     task_id="check_processing_zone",
+    #     python_callable=check_files,
+    #     provide_context=True,
+    #     op_kwargs={"true_option": 'create_dataproc_cluster',
+    #                "false_option": "transformation_finished_with_sucess",
+    #                "zone": "processing_zone"}
+    # )
 
-    create_cluster = DataprocCreateClusterOperator(
-        task_id="create_cluster",
-        project_id=PROJECT,
-        cluster_config=get_dataproc_cluster_def(),
-        region="us-central1-a",
-        cluster_name="censo-escolar",
-    )
+    # create_cluster = DataprocCreateClusterOperator(
+    #     task_id="create_cluster",
+    #     project_id=PROJECT,
+    #     cluster_config=get_dataproc_cluster_def(),
+    #     region="us-central1-a",
+    #     cluster_name="censo-escolar",
+    # )

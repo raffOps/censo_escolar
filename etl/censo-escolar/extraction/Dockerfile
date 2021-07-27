@@ -7,4 +7,4 @@ RUN apt-get install unar -y
 COPY requirements.txt .
 RUN pip install -r requirements.txt
 COPY extract.py .
-COPY ../../key.json .
+COPY key.json .

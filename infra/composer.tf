@@ -14,7 +14,7 @@ resource "google_composer_environment" "composer" {
           "AIRFLOW_VAR_DATA_LAKE" = google_storage_bucket.data-lake.name
           "AIRFLOW_VAR_FIRST_YEAR" = "2011"
           "AIRFLOW_VAR_LAST_YEAR" = "2020"
-          "AIRFLOW_VAR_PROJECT": var.project
+          "AIRFLOW_VAR_PROJECT" = var.project
         }
       }
   }
