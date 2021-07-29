@@ -11,7 +11,7 @@ consegue rodar gratuitamente esse projeto.
 O GKE, Dataproc e BigQuery são provisionados pelo Composer. 
 O Composer, por sua vez, é provisionado pelo fantástico [Terraform](https://www.terraform.io/). 
 
-O deploy é realizado com pouca dificuldade no Google Cloud Shell, não necessitando instalar nada.
+O deploy é realizado com poucos comandos no Google Cloud Shell, não necessitando fazer nada na sua máquina local.
 
 ## Dados 
 #### [Download](https://www.gov.br/inep/pt-br/acesso-a-informacao/dados-abertos/microdados/censo-escolar)
