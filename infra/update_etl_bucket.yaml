@@ -9,4 +9,4 @@ steps:
     - '-d'
     - '-r'
     - 'etl/.'
-    - '${_GCS_BUCKET}'
+    - 'gs://${_GCS_BUCKET}'

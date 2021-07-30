@@ -15,7 +15,7 @@ resource "google_cloudbuild_trigger" "update_dags" {
 }
 
 
-resource "google_cloudbuild_trigger" "update_etl_bucket" {
+resource "google_cloudbuild_trigger" "update_etl_bucket_" {
   name = "update-etl-bucket"
   github {
     owner = var.git_user
