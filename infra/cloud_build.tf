@@ -1,5 +1,5 @@
 resource "google_cloudbuild_trigger" "update_dags" {
-  name = "updata_dags"
+  name = "updata-dags"
   github {
     owner = var.git_user
     name = "etl_censo_escolar"
@@ -16,7 +16,7 @@ resource "google_cloudbuild_trigger" "update_dags" {
 
 
 resource "google_cloudbuild_trigger" "update_etl_bucket" {
-  name = "update_etl_bucket"
+  name = "update-etl-bucket"
   github {
     owner = var.git_user
     name = "etl_censo_escolar"
@@ -26,7 +26,7 @@ resource "google_cloudbuild_trigger" "update_etl_bucket" {
   }
 
     substitutions = {
-    _GCS_BUCKET = "${google_storage_bucket.data-lake.name}-etl"
+    _GCS_BUCKET = google_storage_bucket.scripts.name
   }
   filename = "infra/update_etl_bucket.yaml"
 }

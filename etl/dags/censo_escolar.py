@@ -15,13 +15,16 @@ from airflow.providers.google.cloud.operators.kubernetes_engine import (
 from kubernetes.client import V1ResourceRequirements
 from google.cloud import storage
 
-DATA_LAKE = Variable.get("DATA_LAKE")
+LANDING_BUCKET = Variable.get("DATA_LAKE_LANDING")
+PROCESSING_BUCKET = Variable.get("DATA_LAKE_PROCESSING")
+CONSUMER_BUCKET = Variable.get("DATA_LAKE_CONSUMER")
+SCRIPTS_BUCKET = Variable.get("DATA_LAKE_SCRIPTS")
 PROJECT = Variable.get("PROJECT")
+
 FIRST_YEAR = int(Variable.get("FIRST_YEAR"))
 LAST_YEAR = int(Variable.get("LAST_YEAR"))
 YEARS = list(range(FIRST_YEAR, LAST_YEAR + 1))
 
-BUCKET_LANDING = "{}-landing"
 
 
 def calculate_cluster_size(amount_years):
@@ -62,9 +65,9 @@ def check_files(**context):
     true_option = context["true_option"]
     false_option = context["false_option"]
     client = storage.Client()
-    bucket = client.get_bucket(DATA_LAKE)
+    bucket = client.get_bucket(context["zone"])
     years_in_this_zone = set([int(blob.name.split("/")[2])
-                             for blob in list(bucket.list_blobs(prefix=f"{context['zone']}/censo-escolar"))])
+                             for blob in list(bucket.list_blobs(prefix="censo-escolar"))])
     years_not_in_this_zone = set(YEARS) - years_in_this_zone
     if years_not_in_this_zone:
         ti.xcom_push(key="years", value=json.dumps(list(years_in_this_zone)))
@@ -106,7 +109,7 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
         provide_context=True,
         op_kwargs={"true_option": 'create_gke_cluster',
                    "false_option": "extraction_finished_with_sucess",
-                   "zone": "landing_zone"}
+                   "zone": LANDING_BUCKET}
     )
 
     create_gke_cluster = GKECreateClusterOperator(
@@ -136,7 +139,7 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
                 image=f"gcr.io/{PROJECT}/censo_escolar_extraction:latest",
                 arguments=["sh", "-c", f'python extract.py {year}'],
                 env_vars={
-                    "DATA_LAKE": DATA_LAKE,
+                    "BUCKET": LANDING_BUCKET,
                 },
                 resources=get_pod_resources(),
                 name=f"extract-file-{year}",

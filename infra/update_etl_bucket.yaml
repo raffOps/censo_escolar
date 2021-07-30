@@ -8,5 +8,5 @@ steps:
     - 'rsync'
     - '-d'
     - '-r'
-    - 'etl/*'
+    - 'etl/.'
     - '${_GCS_BUCKET}'
