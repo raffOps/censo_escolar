@@ -81,7 +81,7 @@ def upload_files(year):
     bucket = client.get_bucket(BUCKET)
     for file in glob(f"*{year}/DADOS/*.CSV"):
         csv_name = (re.search("DADOS\/(.*)\.", file).group(1) + ".csv").lower()
-        print(f"Uploading: gs://{BUCKET}censo-escolar/{year}/{csv_name}")
+        print(f"Uploading: gs://{BUCKET}/censo-escolar/{year}/{csv_name}")
         blob = bucket.blob(f"censo-escolar/{year}/{csv_name}")
         blob.upload_from_filename(file)
 
