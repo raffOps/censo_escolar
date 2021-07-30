@@ -1,9 +1,6 @@
-//resource "google_service_account" "default" {
-//  account_id   = "service-account-id"
-//  display_name = "Service Account"
-//}
-
 resource "google_dataproc_cluster" "mycluster" {
+  provider = google-beta
+
   name     = "dados-abertos"
   region   = "us-central1"
 //  graceful_decommission_timeout = "120s"
@@ -12,7 +9,7 @@ resource "google_dataproc_cluster" "mycluster" {
 //  }
 
   cluster_config {
-    staging_bucket = "dataproc-staging-bucket"
+    #staging_bucket = "dataproc-staging-bucket"
 
     master_config {
       num_instances = 1
@@ -50,19 +47,18 @@ resource "google_dataproc_cluster" "mycluster" {
       enable_http_port_access = true
     }
 
-//    gce_cluster_config {
-//      tags = ["foo", "bar"]
-//      # Google recommends custom service accounts that have cloud-platform scope and permissions granted via IAM Roles.
-//      service_account = google_service_account.default.email
-//      service_account_scopes = [
-//        "cloud-platform"
-//      ]
-//    }
-
-    # You can define multiple initialization_action blocks
+    gce_cluster_config {
+      # Google recommends custom service accounts that have cloud-platform scope and permissions granted via IAM Roles.
+      service_account = google_service_account.service_account.email
+      service_account_scopes = [
+        "cloud-platform"
+      ]
+    }
+        # You can define multiple initialization_action blocks
 //    initialization_action {
 //      script      = "gs://dataproc-initialization-actions/stackdriver/stackdriver.sh"
 //      timeout_sec = 500
 //    }
   }
+  depends_on = [google_project_iam_member.members]
 }

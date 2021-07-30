@@ -15,14 +15,14 @@ from airflow.providers.google.cloud.operators.kubernetes_engine import (
 from kubernetes.client import V1ResourceRequirements
 from google.cloud import storage
 
-LANDING_BUCKET = Variable.get("DATA_LAKE_LANDING")
-PROCESSING_BUCKET = Variable.get("DATA_LAKE_PROCESSING")
-CONSUMER_BUCKET = Variable.get("DATA_LAKE_CONSUMER")
-SCRIPTS_BUCKET = Variable.get("DATA_LAKE_SCRIPTS")
 PROJECT = Variable.get("PROJECT")
+FIRST_YEAR = int(Variable.get("CENSO_ESCOLAR_FIRST_YEAR"))
+LAST_YEAR = int(Variable.get("CENSO_ESCOLAR_LAST_YEAR"))
 
-FIRST_YEAR = int(Variable.get("FIRST_YEAR"))
-LAST_YEAR = int(Variable.get("LAST_YEAR"))
+LANDING_BUCKET = f"{PROJECT}-landing"
+PROCESSING_BUCKET = f"{PROJECT}-processing"
+CONSUMER_BUCKET = f"{PROJECT}-consumer"
+SCRIPTS_BUCKET = f"{PROJECT}-scripts"
 YEARS = list(range(FIRST_YEAR, LAST_YEAR + 1))
 
 
