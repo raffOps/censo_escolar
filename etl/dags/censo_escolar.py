@@ -21,6 +21,8 @@ FIRST_YEAR = int(Variable.get("FIRST_YEAR"))
 LAST_YEAR = int(Variable.get("LAST_YEAR"))
 YEARS = list(range(FIRST_YEAR, LAST_YEAR + 1))
 
+BUCKET_LANDING = "{}-landing"
+
 
 def calculate_cluster_size(amount_years):
     return ceil(int(amount_years)/2) + 1
