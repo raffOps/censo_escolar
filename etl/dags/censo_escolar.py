@@ -257,8 +257,8 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
             trigger_rule='none_failed'
         )
 
-        check_processing_bucket >> [create_dataproc_cluster, transformation_finished_wih_sucess]
-        create_dataproc_cluster >> transform_years >> [destroy_dataproc_cluster, transformation_finished_wih_sucess]
+        check_processing_bucket >> [create_dataproc_cluster, transformation_finished_with_sucess]
+        create_dataproc_cluster >> transform_years >> [destroy_dataproc_cluster, transformation_finished_with_sucess]
 
     extract >> transform
 
