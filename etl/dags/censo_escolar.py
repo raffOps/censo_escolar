@@ -225,7 +225,7 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
                     template_id = "censo-escolar-transform",
                     project_id = PROJECT,
                     region = "us-east1",
-                    paramaters = {
+                    parameters = {
                         "PROJECT": PROJECT,
                         "YEAR": str(year)
                     }
