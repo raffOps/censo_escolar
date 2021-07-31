@@ -15,7 +15,9 @@ from airflow.providers.google.cloud.operators.kubernetes_engine import (
 )
 
 from airflow.providers.google.cloud.operators.dataproc import (
-    DataprocCreateClusterOperator
+    DataprocCreateClusterOperator,
+    DataprocSubmitJobOperator,
+    DataprocDeleteClusterOperator
 )
 from kubernetes.client import V1ResourceRequirements
 from google.cloud import storage
