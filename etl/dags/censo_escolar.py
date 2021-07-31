@@ -200,12 +200,17 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
             task_id="check_processing_bucket",
             python_callable=check_years,
             provide_context=True,
-            op_kwargs={"true_option": 'transform.create_dataproc_cluster',
+            op_kwargs={"true_option": "dummy_transform",
                     "false_option": "transform.transformation_finished_with_sucess",
                     "bucket": processing_bucket,
                     "years": years
                     },
             trigger_rule="none_failed"
+        )
+
+
+        dummy_transform = DummyOperator(
+            task_id="dummy_transform"
         )
 
 
@@ -244,7 +249,7 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
                 trigger_rule='none_failed'
             )
 
-        check_processing_bucket >> [transform_years, transformation_finished_with_sucess]
-        transform_years >> transformation_finished_with_sucess
+        check_processing_bucket >> [dummy_transform, transformation_finished_with_sucess]
+        dummy_transform >> transform_years >> transformation_finished_with_sucess
 
     extract >> transform
