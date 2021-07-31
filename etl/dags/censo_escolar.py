@@ -145,7 +145,7 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
     )
 
     with TaskGroup(group_id="extract_years") as extract_years:
-        for year in YEARS:
+        for year in years:
             check_extract_year = BranchPythonOperator(
                 task_id=f"check_extract_year_{year}",
                 python_callable=check_year,
@@ -213,7 +213,7 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
     )
 
     with TaskGroup(group_id="transform_years") as transform_years:
-        for year in YEARS:
+        for year in years:
             check_transform_year = BranchPythonOperator(
                 task_id=f"check_transform_year_{year}",
                 python_callable=check_year,
