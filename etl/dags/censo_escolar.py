@@ -63,7 +63,7 @@ def get_dataproc_cluster_def():
             "machine_type_uri": "n1-highmem-4",
             "disk_config": {"boot_disk_type": "pd-ssd", "boot_disk_size_gb": 1024}
         },
-        "softaware_config": {
+        "software_config": {
             "image_version": "2.0-debian10"
         },
         "gce_cluster_config": {
