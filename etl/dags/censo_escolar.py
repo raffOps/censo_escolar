@@ -196,18 +196,18 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
         create_gke_cluster >> extract_years >> [destroy_gke_cluster, extraction_finished_with_sucess]
 
 
-    TaskGroup(group_id="transform") as transform:
-            check_processing_bucket = BranchPythonOperator(
-        task_id="check_processing_bucket",
-        python_callable=check_years,
-        provide_context=True,
-        op_kwargs={"true_option": 'create_dataproc_cluster',
-                   "false_option": "transformation_finished_with_sucess",
-                   "bucket": processing_bucket,
-                   "years": years
-                   },
-        trigger_rule="none_failed"
-    )
+    with TaskGroup(group_id="transform") as transform:
+        check_processing_bucket = BranchPythonOperator(
+            task_id="check_processing_bucket",
+            python_callable=check_years,
+            provide_context=True,
+            op_kwargs={"true_option": 'create_dataproc_cluster',
+                    "false_option": "transformation_finished_with_sucess",
+                    "bucket": processing_bucket,
+                    "years": years
+                    },
+            trigger_rule="none_failed"
+        )
 
     extract >> transform
 
