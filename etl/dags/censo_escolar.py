@@ -13,7 +13,6 @@ from airflow.providers.google.cloud.operators.kubernetes_engine import (
     GKECreateClusterOperator,
     GKEDeleteClusterOperator
 )
-
 from airflow.providers.google.cloud.operators.dataproc import (
     DataprocCreateClusterOperator,
     DataprocSubmitJobOperator,
@@ -226,7 +225,7 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
             )
 
             transform_year = DataprocSubmitJobOperator(
-                task_id="pyspark_task",
+                task_id=f"transform_years.transform_year_{year}",
                 job=get_pyspark_job_def(year),
                 location="us-central1-a",
                 project_id=PROJECT
