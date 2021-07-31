@@ -224,8 +224,8 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
                     task_id=f"check_before_transform_{year}",
                     python_callable=check_year,
                     provide_context=True,
-                    op_kwargs={"true_option": f"transform.transform_years.transform_year_{year}_finished",
-                            "false_option": f"transform.transform_years.transform_year_{year}",
+                    op_kwargs={"true_option": f"transform.transform_years.transform_year_{year}",
+                            "false_option": f"transform.transform_years.transform_year_{year}_finished",
                             "year": year,
                             "task": "transform.check_processing_bucket"
                             }
