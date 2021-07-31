@@ -18,4 +18,3 @@ resource "google_composer_environment" "composer" {
       }
   }
 }
-

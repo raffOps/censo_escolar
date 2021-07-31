@@ -13,11 +13,7 @@ from airflow.providers.google.cloud.operators.kubernetes_engine import (
     GKECreateClusterOperator,
     GKEDeleteClusterOperator
 )
-from airflow.providers.google.cloud.operators.dataproc import (
-    DataprocCreateClusterOperator,
-    DataprocSubmitJobOperator,
-    DataprocDeleteClusterOperator
-)
+from airflow.providers.google.cloud.operators.dataproc import DataprocInstantiateWorkflowTemplateOperator
 from kubernetes.client import V1ResourceRequirements
 from google.cloud import storage
 
@@ -51,7 +47,7 @@ def get_gke_cluster_def():
     return cluster_def
 
 
-def get_dataproc_cluster_def():
+#def get_dataproc_cluster_def():
     # cluster_def = {
     #     "master_config": {
     #         "num_instances": 1,
@@ -72,41 +68,19 @@ def get_dataproc_cluster_def():
     #     }
     # }
 
-    cluster_def = {
-        "master_config": {
-            "num_instances": 1,
-            "machine_type_uri": "n1-standard-4",
-            "disk_config": {"boot_disk_type": "pd-standard", "boot_disk_size_gb": 1024},
-        },
-        "worker_config": {
-            "num_instances": 2,
-            "machine_type_uri": "n1-standard-4",
-            "disk_config": {"boot_disk_type": "pd-standard", "boot_disk_size_gb": 1024},
-        }
-    }
-    return cluster_def
-
-def get_dataproc_workflow_template(years):
-    template = {
-        "id": "censo-escolar-transform",
-        "name": "censo-escolar-transform",
-        "placement": "managed_cluster": {
-            "cluster_name": "censo-escolar-transform",
-            "config": {
-                
-            }
-        }
-    }
-
-def get_pyspark_job_def(year):
-    pyspark_job_def = {
-        "reference": {"project_id": PROJECT},
-        "placement": {"cluster_name": "censo-escolar-transform"},
-        "pyspark_job": {
-            "main_python_file_uri": f"gs://{PROJECT}-scripts/censo_escolar/transformation/transform.py",
-            "args": [PROJECT, year]
-        }
-    }
+    # cluster_def = {
+    #     "master_config": {
+    #         "num_instances": 1,
+    #         "machine_type_uri": "n1-standard-4",
+    #         "disk_config": {"boot_disk_type": "pd-standard", "boot_disk_size_gb": 1024},
+    #     },
+    #     "worker_config": {
+    #         "num_instances": 2,
+    #         "machine_type_uri": "n1-standard-4",
+    #         "disk_config": {"boot_disk_type": "pd-standard", "boot_disk_size_gb": 1024},
+    #     }
+    # }
+    # return cluster_def
 
 
 def check_years(**context):
@@ -235,14 +209,6 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
         )
 
 
-        create_dataproc_cluster = DataprocCreateClusterOperator(
-            task_id="create_dataproc_cluster",
-            project_id=PROJECT,
-            cluster_config=get_dataproc_cluster_def(),
-            region="us-east1-b",
-            cluster_name="censo-escolar-transform",
-        )
-
         with TaskGroup(group_id="transform_years") as transform_years:
             for year in years:
                 check_before_transform = BranchPythonOperator(
@@ -254,11 +220,15 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
                             "year": year}
                 )
 
-                transform_year = DataprocSubmitJobOperator(
+                transform_year = DataprocInstantiateWorkflowTemplateOperator(
                     task_id=f"transform.transform_year_{year}",
-                    job=get_pyspark_job_def(year),
-                    location="us-east1-b",
-                    project_id=PROJECT
+                    template_id = "censo-escolar-transform",
+                    project_id = PROJECT,
+                    region = "us-east1",
+                    paramaters = {
+                        "PROJECT": PROJECT,
+                        "YEAR": year
+                    }
                 )
 
                 transform_year_finished = DummyOperator(
@@ -269,20 +239,12 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
                 check_before_transform >> transform_year >> transform_year_finished
                 check_before_transform >> transform_year_finished
 
-        destroy_dataproc_cluster = DataprocDeleteClusterOperator(
-                task_id="destroy_dataproc_cluster",
-                project_id=PROJECT,
-                region="us-east1-b",
-                trigger_rule="all_done",
-                cluster_name="censo-escolar-transform",
-            )
-
         transformation_finished_with_sucess = DummyOperator(
                 task_id="transformation_finished_with_sucess",
                 trigger_rule='none_failed'
             )
 
-        check_processing_bucket >> [create_dataproc_cluster, transformation_finished_with_sucess]
-        create_dataproc_cluster >> transform_years >> [destroy_dataproc_cluster, transformation_finished_with_sucess]
+        check_processing_bucket >> [transform_years, transformation_finished_with_sucess]
+        transform_years >> transformation_finished_with_sucess
 
     extract >> transform
