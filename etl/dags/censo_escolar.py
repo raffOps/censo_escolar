@@ -133,8 +133,8 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
             task_id="check_landing_bucket",
             python_callable=check_years,
             provide_context=True,
-            op_kwargs={"true_option": 'create_gke_cluster',
-                    "false_option": "extraction_finished_with_sucess",
+            op_kwargs={"true_option": 'extract.create_gke_cluster',
+                    "false_option": "extract.extraction_finished_with_sucess",
                     "bucket": f"{PROJECT}-landing",
                     "years": years}
         )
@@ -201,8 +201,8 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
             task_id="check_processing_bucket",
             python_callable=check_years,
             provide_context=True,
-            op_kwargs={"true_option": 'create_dataproc_cluster',
-                    "false_option": "transformation_finished_with_sucess",
+            op_kwargs={"true_option": 'transform.create_dataproc_cluster',
+                    "false_option": "transform.transformation_finished_with_sucess",
                     "bucket": processing_bucket,
                     "years": years
                     },
