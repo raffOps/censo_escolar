@@ -106,7 +106,7 @@ def check_year(**context):
     year = context["year"]
     true_option = context["true_option"]
     false_option = context["false_option"]
-    years_not_in_this_bucket = ti.xcom_pull(task_ids="extract.check_landing_bucket", 
+    years_not_in_this_bucket = ti.xcom_pull(task_ids=context["task"], 
                                             key="years_not_in_this_bucket")
     if year in json.loads(years_not_in_this_bucket):
         return true_option
@@ -136,7 +136,8 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
             op_kwargs={"true_option": 'extract.create_gke_cluster',
                     "false_option": "extract.extraction_finished_wih_sucess",
                     "bucket": f"{PROJECT}-landing",
-                    "years": years}
+                    "years": years
+                }
         )
 
         create_gke_cluster = GKECreateClusterOperator(
@@ -154,7 +155,9 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
                     provide_context=True,
                     op_kwargs={"true_option": f"extract.download.download_year_{year}",
                             "false_option": f"extract.download.download_year_{year}_finished",
-                            "year": year}
+                            "year": year,
+                            "task":"extract.check_landing_bucket"
+                            }
                 )
 
                 download_year = GKEStartPodOperator(
@@ -223,7 +226,9 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
                     provide_context=True,
                     op_kwargs={"true_option": f"transform.transform_years.transform_year_{year}_finished",
                             "false_option": f"transform.transform_years.transform_year_{year}",
-                            "year": year}
+                            "year": year,
+                            "task": "transform.check_processing_bucket"
+                            }
                 )
 
                 transform_year = DataprocInstantiateWorkflowTemplateOperator(
