@@ -93,7 +93,7 @@ def check_years(**context):
     years_in_this_bucket = set([int(re.findall("([0-9]{4})\/", blob.name)[0])
                              for blob in list(bucket.list_blobs(prefix="censo-escolar"))
                               if re.findall("([0-9]{4})\/", blob.name)])
-    years_not_in_this_zone = set(context["years"]) - years_in_this_bucket
+    years_not_in_this_bucket = set(context["years"]) - years_in_this_bucket
     if years_not_in_this_zone:
         ti.xcom_push(key="years", value=json.dumps(list(years_in_this_bucket)))
         ti.xcom_push(key="cluster_size", value=calculate_cluster_size(len(years_not_in_this_zone)))
@@ -107,8 +107,8 @@ def check_year(**context):
     year = context["year"]
     true_option = context["true_option"]
     false_option = context["false_option"]
-    years_in_landing_zone = ti.xcom_pull(task_ids="extract.check_landing_bucket", key="years")
-    if year in json.loads(years_in_landing_zone):
+    years_in_this_bucket = ti.xcom_pull(task_ids="extract.check_landing_bucket", key="years")
+    if year in json.loads(years_in_this_bucket):
         return true_option
     else:
         return false_option
@@ -164,7 +164,7 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
                     cluster_name="censo-escolar-extraction",
                     namespace="default",
                     image=f"gcr.io/{PROJECT}/censo_escolar_extraction:latest",
-                    arguments=["sh", "-c", f'python extract.py {year} {PROJECT}'],
+                    arguments=["sh", "-c", f'python extract.py {year} {landing_bucket}'],
                     resources=get_pod_resources(),
                     name=f"extract-file-{year}",
                     get_logs=True,
