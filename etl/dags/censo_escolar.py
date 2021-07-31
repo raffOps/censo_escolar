@@ -209,7 +209,7 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
         task_id="create_dataproc_cluster",
         project_id=PROJECT,
         cluster_config=get_dataproc_cluster_def(),
-        region="us-central1-a",
+        region="us-east1-b",
         cluster_name="censo-escolar-transform",
     )
 
@@ -227,7 +227,7 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
             transform_year = DataprocSubmitJobOperator(
                 task_id=f"transform_years.transform_year_{year}",
                 job=get_pyspark_job_def(year),
-                location="us-central1-a",
+                location="us-east1-b",
                 project_id=PROJECT
             )
 
@@ -242,7 +242,7 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
     destroy_dataproc_cluster = DataprocDeleteClusterOperator(
         task_id="destroy_dataproc_cluster",
         project_id=PROJECT,
-        region="us-central1-a",
+        region="us-east1-b",
         trigger_rule="all_done",
         cluster_name="censo-escolar-transform",
     )
