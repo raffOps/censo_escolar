@@ -86,6 +86,13 @@ def get_dataproc_cluster_def():
     }
     return cluster_def
 
+def get_dataproc_workflow_template(years):
+    template = {
+        "id": "censo-escolar-transform"
+        "name": "censo-escolar-transform",
+        "placement": 
+    }
+
 def get_pyspark_job_def(year):
     pyspark_job_def = {
         "reference": {"project_id": PROJECT},
