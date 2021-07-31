@@ -94,7 +94,7 @@ def check_years(**context):
                               if re.findall("([0-9]{4})\/", blob.name)])
     years_not_in_this_bucket = set(context["years"]) - years_in_this_bucket
     if years_not_in_this_bucket:
-        ti.xcom_push(key="years", value=json.dumps(list(years_in_this_bucket)))
+        ti.xcom_push(key="years_not_in_this_bucket", value=json.dumps(list(years_not_in_this_bucket)))
         ti.xcom_push(key="cluster_size", value=calculate_cluster_size(len(years_not_in_this_bucket)))
         return true_option
     else:
@@ -106,8 +106,9 @@ def check_year(**context):
     year = context["year"]
     true_option = context["true_option"]
     false_option = context["false_option"]
-    years_in_this_bucket = ti.xcom_pull(task_ids="extract.check_landing_bucket", key="years")
-    if year in json.loads(years_in_this_bucket):
+    years_not_in_this_bucket = ti.xcom_pull(task_ids="extract.check_landing_bucket", 
+                                            key="years_not_in_this_bucket")
+    if year in json.loads(years_not_in_this_bucket):
         return true_option
     else:
         return false_option
@@ -151,8 +152,8 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
                     task_id=f"check_before_download_year_{year}",
                     python_callable=check_year,
                     provide_context=True,
-                    op_kwargs={"true_option": f"extract.download.download_year_{year}_finished",
-                            "false_option": f"extract.download.download_year_{year}",
+                    op_kwargs={"true_option": f"extract.download.download_year_{year}",
+                            "false_option": f"extract.download.download_year_{year_finished}",
                             "year": year}
                 )
 
@@ -201,10 +202,10 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
             python_callable=check_years,
             provide_context=True,
             op_kwargs={"true_option": "transform.dummy_transform",
-                    "false_option": "transform.transformation_finished_with_sucess",
-                    "bucket": processing_bucket,
-                    "years": years
-                    },
+                        "false_option": "transform.transformation_finished_with_sucess",
+                        "bucket": processing_bucket,
+                        "years": years
+            },
             trigger_rule="none_failed"
         )
 
