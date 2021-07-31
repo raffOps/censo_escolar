@@ -8,6 +8,15 @@ resource "google_storage_bucket" "landing" {
       name          = "${var.project}-landing"
       location      = "US"
       force_destroy = false
+    # lifecycle_rule {
+    #     condition {
+    #         age = 10
+    #     }
+    #     action {
+    #         type = "SetStorageClass"
+    #         storage_class = "REGIONAL"
+    #     }
+    # }
 }
 
 

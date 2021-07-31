@@ -13,12 +13,14 @@ CREDENTIALS = "./key.json"
 
 
 def get_url(year):
-    if year == "2020":
+    if year == 2020:
         url = "https://download.inep.gov.br/dados_abertos/microdados_censo_escolar_2020.zip"
-    elif year in "2019 2018":
+    elif year in [2019, 2018]:
         url = f"https://download.inep.gov.br/microdados/microdados_educacao_basica_{year}.zip"
-    else:
+    elif year in range(2011, 2018):
         url = f"https://download.inep.gov.br/microdados/micro_censo_escolar_{year}.zip"
+    else:
+        raise Exception(f"Year {year} not mapped")
 
     return url
 
@@ -84,7 +86,8 @@ def upload_files(year, bucket):
 
 
 if __name__ == "__main__":
-    year, bucket = sys.argv[1:3]
+    year = int(sys.argv[1])
+    bucket = sys.argv[2]
 
     download_file(year)
     unzip_file(year)

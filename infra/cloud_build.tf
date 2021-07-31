@@ -15,7 +15,7 @@
  }
 
 
-resource "google_cloudbuild_trigger" "update_etl_bucket" {
+resource "google_cloudbuild_trigger" "update_scripts" {
   name = "update-etl-bucket"
   github {
     owner = var.git_user
@@ -28,5 +28,5 @@ resource "google_cloudbuild_trigger" "update_etl_bucket" {
     substitutions = {
     _GCS_BUCKET = google_storage_bucket.scripts.name
   }
-  filename = "infra/update_etl_bucket.yaml"
+  filename = "infra/update_scripts.yaml"
 }

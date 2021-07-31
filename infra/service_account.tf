@@ -5,7 +5,6 @@ resource "google_service_account" "service_account" {
   project      = var.project
 }
 
-# conditionally assign billing user role on a specific billing account
 resource "google_project_iam_member" "members" {
     for_each = toset(["roles/storage.admin", "roles/dataproc.worker"])
         project            = var.project
