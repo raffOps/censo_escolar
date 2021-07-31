@@ -218,14 +218,14 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
         cluster_name="censo-escolar-transform",
     )
 
-    with TaskGroup(group_id="transform") as transform:
+    with TaskGroup(group_id="transform_years") as transform_years:
         for year in years:
             check_before_transform = BranchPythonOperator(
                 task_id=f"check_before_transform_{year}",
                 python_callable=check_year,
                 provide_context=True,
-                op_kwargs={"true_option": f"transform.transform_year_{year}_finished",
-                           "false_option": f"transform.transform_year_{year}",
+                op_kwargs={"true_option": f"transform.transform_years.transform_year_{year}_finished",
+                           "false_option": f"transform.transform_years.transform_year_{year}",
                            "year": year}
             )
 
@@ -258,7 +258,7 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
         )
 
         check_processing_bucket >> [create_dataproc_cluster, transformation_finished_wih_sucess]
-        create_dataproc_cluster >> transform >> [destroy_dataproc_cluster, transformation_finished_wih_sucess]
+        create_dataproc_cluster >> transform_years >> [destroy_dataproc_cluster, transformation_finished_wih_sucess]
 
     extract >> transform
 
