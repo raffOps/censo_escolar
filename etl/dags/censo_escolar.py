@@ -200,7 +200,7 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
             task_id="check_processing_bucket",
             python_callable=check_years,
             provide_context=True,
-            op_kwargs={"true_option": "dummy_transform",
+            op_kwargs={"true_option": "transform.dummy_transform",
                     "false_option": "transform.transformation_finished_with_sucess",
                     "bucket": processing_bucket,
                     "years": years
