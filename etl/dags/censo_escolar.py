@@ -241,7 +241,7 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
                 trigger_rule="all_success"
             )
 
-            check_before_transform >> transform_year >> download_year_finished
+            check_before_transform >> transform_year >> transform_year_finished
             check_before_transform >> transform_year_finished
 
         destroy_dataproc_cluster = DataprocDeleteClusterOperator(
