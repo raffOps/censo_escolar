@@ -9,9 +9,10 @@ import sys
 from datetime import datetime
 from pyspark.sql import SparkSession
 from pyspark.sql.types import *
-from pyspark.sql.functions import (udf, col)
+from pyspark.sql.functions import (udf, col, expr)
 
 from google.cloud import storage
+from time import time
 
 spark = SparkSession.builder.appName("censo").getOrCreate()
 spark.conf.set("spark.sql.repl.eagerEval.enabled", True)
@@ -20,9 +21,12 @@ spark.conf.set("spark.sql.repl.eagerEval.enabled", True)
 # In[2]:
 
 
-def load_json(name, bucket):
-    bucket = storage.Client().get_bucket(bucket)
-    blob = bucket.blob(f'aux_tables/{name}.json')
+def add_prefix_in_columns(df, prefix):
+    return df.select([col(column).alias(f"{prefix}_{column}") for column in df.columns])
+
+def load_json(name, bucket_prefix):
+    bucket = storage.Client().get_bucket(f"{bucket_prefix}-scripts")
+    blob = bucket.blob(f'censo_escolar/transformation/{name}.json')
     maps = json.loads(blob.download_as_string())
     return maps
 
@@ -43,23 +47,25 @@ def string_to_date(df, column, year):
     df = df.withColumn(column, map_func(col(column)))
     return df
 
-def load_csv(file, bucket, year, region=None):
-    schema = load_json(f"{file}_schema", bucket)
-    try:
-        schema = StructType.fromJson(schema)
-    except:
-        schema = StructType.fromJson(json.loads(schema))
-
-    if file == "matricula":
-        file = f"gs://{bucket}/landing_zone/censo-escolar/{year}/matricula_{region}.csv"
+def load_csv(file, bucket_prefix, year, region=None):
+    schema = load_json(f"schemas/{file}_schema", bucket_prefix)
+    schema = StructType.fromJson(schema)
+#     except:
+#         schema = StructType.fromJson(json.loads(schema))
+        
+    if file == "gestor" and int(year) < 2019:
+        df = spark.createDataFrame(data=[],schema=schema)
     else:
-        file = f"gs://{bucket}/landing_zone/censo-escolar/{year}/{file}.csv"
+        if file in ["matricula", "docentes"] :
+            file = f"gs://{bucket_prefix}-landing/censo-escolar/{year}/{file}_{region}.csv"
+        else:
+            file = f"gs://{bucket_prefix}-landing/censo-escolar/{year}/{file}.csv"
 
-    df = spark             .read             .options(header=True, delimiter="|", encoding="utf8")             .schema(schema=schema)             .csv(file)
+        df = spark                 .read                 .options(header=True, delimiter="|", encoding="utf8")                 .schema(schema=schema)                 .csv(file)
     return df
 
 def transform_string_columns(df, file, bucket):
-    maps = {**load_json(f"{file}_maps", bucket), **load_json("regioes_maps", bucket)}
+    maps = load_json("maps", bucket)
     string_columns = [column for column in df.columns 
                       if column.startswith("TP") or column.startswith("CO")]
 
@@ -95,101 +101,109 @@ def transform_date_columns(df, file):
     if file == "escolas":
         df = string_to_date(df, "DT_ANO_LETIVO_INICIO", YEAR)
         df = string_to_date(df, "DT_ANO_LETIVO_TERMINO", YEAR)
+    
     return df
 
 def drop_columns(df, file):
-    if file == "matricula":
-        drops = [
-                'CO_CURSO_EDUC_PROFISSIONAL',
-                 'TP_MEDIACAO_DIDATICO_PEDAGO',
-                 'TP_UNIFICADA',
-                 'TP_TIPO_ATENDIMENTO_TURMA',
-                 'TP_TIPO_LOCAL_TURMA',
-                 'CO_ENTIDADE',
-                 'CO_DISTRITO',
-                 'TP_DEPENDENCIA',
-                 'TP_CATEGORIA_ESCOLA_PRIVADA',
-                 'TP_CONVENIO_PODER_PUBLICO',
-                 'TP_REGULAMENTACAO'
-                ]
-    elif file == "turmas":
-        drops = [
-                "CO_REGIAO",
-                "CO_MESORREGIAO",
-                "CO_MICRORREGIAO",
-                "CO_UF",
-                "CO_MUNICIPIO",
-                "CO_DISTRITO",
-                "TP_DEPENDENCIA",
-                "TP_LOCALIZACAO",
-                "TP_CATEGORIA_ESCOLA_PRIVADA",
-                "TP_CONVENIO_PODER_PUBLICO",
-                "TP_REGULAMENTACAO",
-                "TP_LOCALIZACAO_DIFERENCIADA"
-                ]
-    else:
-        drops = []
+    drops = []
+    if file in ["turmas", "matricula", "gestor", "docentes"]:
+        drops.extend(["NU_ANO_CENSO",
+                     'TP_REGULAMENTACAO',
+                     'CO_UF',
+                     'IN_MANT_ESCOLA_PRIVADA_ONG',
+                     'NU_ANO_CENSO',
+                     'CO_MUNICIPIO',
+                     'IN_CONVENIADA_PP',
+                     'IN_ESPECIAL_EXCLUSIVA',
+                     'TP_CATEGORIA_ESCOLA_PRIVADA',
+                     'IN_MANT_ESCOLA_PRIVADA_OSCIP',
+                     'IN_MANT_ESCOLA_PRIV_ONG_OSCIP',
+                     'IN_MANT_ESCOLA_PRIVADA_S_FINS',
+                     'IN_MANT_ESCOLA_PRIVADA_SIST_S',
+                     'CO_DISTRITO',
+                     'IN_EDUCACAO_INDIGENA',
+                     'CO_MICRORREGIAO',
+                     'TP_DEPENDENCIA',
+                     'IN_EJA',
+                     'IN_REGULAR',
+                     'IN_PROFISSIONALIZANTE',
+                     'TP_LOCALIZACAO_DIFERENCIADA',
+                     'TP_CONVENIO_PODER_PUBLICO',
+                     'TP_LOCALIZACAO',
+                     'CO_REGIAO',
+                     'CO_MESORREGIAO',
+                     'IN_MANT_ESCOLA_PRIVADA_EMP',
+                     'IN_MANT_ESCOLA_PRIVADA_SIND',
+                    ]
+                )
+    if file in ["matricula", "docentes"]:
+        drops.extend(["CO_ENTIDADE"])
+        
+    if file == 'matricula':
+        drops.extend([ 'NU_DIAS_ATIVIDADE', 
+                         'NU_DURACAO_TURMA'])
+        
+    if file != "turmas":
+        drops.extend(["TP_MEDIACAO_DIDATICO_PEDAGO", 
+                      "TP_TIPO_ATENDIMENTO_TURMA",
+                      "TP_TIPO_LOCAL_TURMA"])
+    
         
     df = df.drop(*drops)
+
     return df
         
 
 def transform(file, bucket, year, region=None):
         df = load_csv(file, bucket, year, region)
+        df = drop_columns(df, file)
         df = transform_string_columns(df, file, bucket)
         df = transform_boolean_columns(df)
         df = transform_integer_columns(df)
         df = transform_date_columns(df, bucket)
-        df = drop_columns(df, file)
         return df
-
-
-# In[4]:
-
-
-#regions =  ["co", "nordeste", "norte", "sudeste", "sul"]
-regions =  ["sul"]
-if __name__ == "__main__":
-    if sys.argv[4:]:
-        bucket, year = sys.argv[4:]
-    else:
-        bucket = "rjr-portal-da-transparencia"
-        year = "2020"
-    escolas = transform("escolas", bucket, year)
-    turmas =  transform("turmas", bucket, year)
-    for region in regions:
-        matriculas = transform("matricula", bucket, year, region)
-
-
-# In[5]:
-
-
-escolas_turmas = escolas.join(turmas, escolas.CO_ENTIDADE == turmas.CO_ENTIDADE)
 
 
 # In[ ]:
 
 
-escolas
-
-
-# In[86]:
-
-
-# if FILE == "matricula":
-#     file =  f"{FILE}_{REGION}"
-# else:
-#     file = FILE
-    
-# df.write.parquet(f"gs://{BUCKET}/temp/censo-escolar/{YEAR}/{FILE}.parquet")  
-
-
-# In[87]:
-
-
-# a = spark \
-#         .read \
-#         .parquet(f"gs://{BUCKET}/temp/censo-escolar/{YEAR}/{FILE}.parquet")  
+regions =  ["co", "nordeste", "norte", "sudeste", "sul"]
+partitions = ["E_NU_ANO_CENSO", "E_CO_UF"]
+#regions =  ["norte"]
+if __name__ == "__main__":
+    if sys.argv[1:]:
+        project, year = sys.argv[1:3]
+    else:
+        project = "rjr-dados-abertos"
+        year = "2019"
+        
+    escolas = transform("escolas", project, year)
+    escolas = add_prefix_in_columns(escolas, "E")
+    turmas =  transform("turmas", project, year)
+    turmas = add_prefix_in_columns(turmas, "T")
+    gestores =  transform("gestor", project, year)
+    gestores = add_prefix_in_columns(gestores, "G")
+    for region in regions:
+        #begin = time()
+        docentes =  transform("docentes", project, year, region)
+        docentes = add_prefix_in_columns(docentes, "D")
+        matriculas = transform("matricula", project, year, region)
+        matriculas = add_prefix_in_columns(matriculas, "M")
+        
+        censo = escolas.join(turmas, escolas.E_CO_ENTIDADE == turmas.T_CO_ENTIDADE)
+        censo = censo.join(gestores, censo.E_CO_ENTIDADE == gestores.G_CO_ENTIDADE)
+        censo = censo.join(docentes, censo.T_ID_TURMA == docentes.D_ID_TURMA)
+        censo = censo.join(matriculas, censo.T_ID_TURMA == matriculas.M_ID_TURMA)
+        
+        del(docentes)
+        del(matriculas)
+        censo = censo.drop(*["T_CO_ENTIDADE", "D_ID_TURMA", "M_ID_TURMA", "G_CO_ENTIDADE"])
+        
+        censo          .write          .partitionBy(partitions)          .parquet(f"gs://{project}-processing/censo_escolar", compression="snappy")
+        
+        #end = time()
+        
+        #print(f"{region}: {(end-begin)/60} m")
 
 
 # In[ ]:

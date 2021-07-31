@@ -9,11 +9,6 @@ import subprocess
 import requests
 from google.cloud import storage
 
-if os.getenv("BUCKET"):
-    BUCKET = os.getenv("BUCKET")
-else:
-    BUCKET = "rjr-teste"
-
 CREDENTIALS = "./key.json"
 
 
@@ -75,13 +70,13 @@ def unzip_file(year):
     print("Unzip complete")
 
 
-def upload_files(year):
+def upload_files(year, bucket):
     print("Uploading files")
     client = storage.Client.from_service_account_json(json_credentials_path=CREDENTIALS)
-    bucket = client.get_bucket(BUCKET)
+    bucket = client.get_bucket(bucket)
     for file in glob(f"*{year}/DADOS/*.CSV"):
         csv_name = (re.search("DADOS\/(.*)\.", file).group(1) + ".csv").lower()
-        print(f"Uploading: gs://{BUCKET}/censo-escolar/{year}/{csv_name}")
+        print(f"Uploading: gs://{bucket}/censo-escolar/{year}/{csv_name}")
         blob = bucket.blob(f"censo-escolar/{year}/{csv_name}")
         blob.upload_from_filename(file)
 
@@ -89,10 +84,10 @@ def upload_files(year):
 
 
 if __name__ == "__main__":
-    year = sys.argv[1]
+    year, bucket = sys.argv[1:3]
 
     download_file(year)
     unzip_file(year)
-    upload_files(year)
+    upload_files(year, bucket)
 
 
