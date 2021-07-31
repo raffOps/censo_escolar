@@ -94,9 +94,9 @@ def check_years(**context):
                              for blob in list(bucket.list_blobs(prefix="censo-escolar"))
                               if re.findall("([0-9]{4})\/", blob.name)])
     years_not_in_this_bucket = set(context["years"]) - years_in_this_bucket
-    if years_not_in_this_zone:
+    if years_not_in_this_bucket:
         ti.xcom_push(key="years", value=json.dumps(list(years_in_this_bucket)))
-        ti.xcom_push(key="cluster_size", value=calculate_cluster_size(len(years_not_in_this_zone)))
+        ti.xcom_push(key="cluster_size", value=calculate_cluster_size(len(years_not_in_this_bucket)))
         return true_option
     else:
         return false_option
