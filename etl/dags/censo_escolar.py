@@ -153,7 +153,7 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
                     python_callable=check_year,
                     provide_context=True,
                     op_kwargs={"true_option": f"extract.download.download_year_{year}",
-                            "false_option": f"extract.download.download_year_{year_finished}",
+                            "false_option": f"extract.download.download_year_{year}_finished}",
                             "year": year}
                 )
 
