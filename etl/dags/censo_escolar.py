@@ -52,25 +52,38 @@ def get_gke_cluster_def():
 
 
 def get_dataproc_cluster_def():
+    # cluster_def = {
+    #     "master_config": {
+    #         "num_instances": 1,
+    #         "machine_type_uri": "n1-highmem-8",
+    #         "disk_config": {"boot_disk_type": "pd-ssd", "boot_disk_size_gb": 1024},
+    #     },
+    #     "worker_config": {
+    #         "num_instances": 2,
+    #         "machine_type_uri": "n1-highmem-4",
+    #         "disk_config": {"boot_disk_type": "pd-ssd", "boot_disk_size_gb": 1024}
+    #     },
+    #     "software_config": {
+    #         "image_version": "2.0-debian10"
+    #     },
+    #     "gce_cluster_config": {
+    #         "service_account": f"etl-service-account@{PROJECT}.iam.gserviceaccount.com",
+    #         "service_account_scopes": ["cloud-platform"]
+    #     }
+    # }
+
     cluster_def = {
-        "master_config": {
-            "num_instances": 1,
-            "machine_type_uri": "n1-highmem-8",
-            "disk_config": {"boot_disk_type": "pd-ssd", "boot_disk_size_gb": 1024},
-        },
-        "worker_config": {
-            "num_instances": 2,
-            "machine_type_uri": "n1-highmem-4",
-            "disk_config": {"boot_disk_type": "pd-ssd", "boot_disk_size_gb": 1024}
-        },
-        "software_config": {
-            "image_version": "2.0-debian10"
-        },
-        "gce_cluster_config": {
-            "service_account": f"etl-service-account@{PROJECT}.iam.gserviceaccount.com",
-            "service_account_scopes": ["cloud-platform"]
-        }
-    }
+    "master_config": {
+        "num_instances": 1,
+        "machine_type_uri": "n1-standard-4",
+        "disk_config": {"boot_disk_type": "pd-standard", "boot_disk_size_gb": 1024},
+    },
+    "worker_config": {
+        "num_instances": 2,
+        "machine_type_uri": "n1-standard-4",
+        "disk_config": {"boot_disk_type": "pd-standard", "boot_disk_size_gb": 1024},
+    },
+}
     return cluster_def
 
 def get_pyspark_job_def(year):
