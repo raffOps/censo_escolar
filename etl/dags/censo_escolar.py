@@ -210,62 +210,54 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
         )
 
 
-    create_dataproc_cluster = DataprocCreateClusterOperator(
-        task_id="create_dataproc_cluster",
-        project_id=PROJECT,
-        cluster_config=get_dataproc_cluster_def(),
-        region="us-east1-b",
-        cluster_name="censo-escolar-transform",
-    )
-
-    with TaskGroup(group_id="transform_years") as transform_years:
-        for year in years:
-            check_before_transform = BranchPythonOperator(
-                task_id=f"check_before_transform_{year}",
-                python_callable=check_year,
-                provide_context=True,
-                op_kwargs={"true_option": f"transform.transform_years.transform_year_{year}_finished",
-                           "false_option": f"transform.transform_years.transform_year_{year}",
-                           "year": year}
-            )
-
-            transform_year = DataprocSubmitJobOperator(
-                task_id=f"transform.transform_year_{year}",
-                job=get_pyspark_job_def(year),
-                location="us-east1-b",
-                project_id=PROJECT
-            )
-
-            transform_year_finished = DummyOperator(
-                task_id=f"transform_year_{year}_finished",
-                trigger_rule="all_success"
-            )
-
-            check_before_transform >> transform_year >> transform_year_finished
-            check_before_transform >> transform_year_finished
-
-        destroy_dataproc_cluster = DataprocDeleteClusterOperator(
-            task_id="destroy_dataproc_cluster",
+        create_dataproc_cluster = DataprocCreateClusterOperator(
+            task_id="create_dataproc_cluster",
             project_id=PROJECT,
+            cluster_config=get_dataproc_cluster_def(),
             region="us-east1-b",
-            trigger_rule="all_done",
             cluster_name="censo-escolar-transform",
         )
 
+        with TaskGroup(group_id="transform_years") as transform_years:
+            for year in years:
+                check_before_transform = BranchPythonOperator(
+                    task_id=f"check_before_transform_{year}",
+                    python_callable=check_year,
+                    provide_context=True,
+                    op_kwargs={"true_option": f"transform.transform_years.transform_year_{year}_finished",
+                            "false_option": f"transform.transform_years.transform_year_{year}",
+                            "year": year}
+                )
+
+                transform_year = DataprocSubmitJobOperator(
+                    task_id=f"transform.transform_year_{year}",
+                    job=get_pyspark_job_def(year),
+                    location="us-east1-b",
+                    project_id=PROJECT
+                )
+
+                transform_year_finished = DummyOperator(
+                    task_id=f"transform_year_{year}_finished",
+                    trigger_rule="all_success"
+                )
+
+                check_before_transform >> transform_year >> transform_year_finished
+                check_before_transform >> transform_year_finished
+
+        destroy_dataproc_cluster = DataprocDeleteClusterOperator(
+                task_id="destroy_dataproc_cluster",
+                project_id=PROJECT,
+                region="us-east1-b",
+                trigger_rule="all_done",
+                cluster_name="censo-escolar-transform",
+            )
+
         transformation_finished_with_sucess = DummyOperator(
-            task_id="transformation_finished_with_sucess",
-            trigger_rule='none_failed'
-        )
+                task_id="transformation_finished_with_sucess",
+                trigger_rule='none_failed'
+            )
 
         check_processing_bucket >> [create_dataproc_cluster, transformation_finished_with_sucess]
         create_dataproc_cluster >> transform_years >> [destroy_dataproc_cluster, transformation_finished_with_sucess]
 
     extract >> transform
-
-
-
-    # destroy_gke_cluster >> check_processing_bucket
-    # transformation_finished_wih_sucess >> check_processing_bucket
-
-    # check_processing_bucket >> [create_dataproc_cluster, transformation_finished_wih_sucess]
-    # create_dataproc_cluster >> transform >> [destroy_dataproc_cluster, transformation_finished_with_sucess]
