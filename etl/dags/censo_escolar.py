@@ -90,12 +90,12 @@ def check_years(**context):
     false_option = context["false_option"]
     client = storage.Client()
     bucket = client.get_bucket(context["bucket"])
-    years_in_this_zone = set([int(re.findall("([0-9]{4})\/", blob.name)[0])
+    years_in_this_bucket = set([int(re.findall("([0-9]{4})\/", blob.name)[0])
                              for blob in list(bucket.list_blobs(prefix="censo-escolar"))
                               if re.findall("([0-9]{4})\/", blob.name)])
-    years_not_in_this_zone = set(context["years"]) - years_in_this_zone
+    years_not_in_this_zone = set(context["years"]) - years_in_this_bucket
     if years_not_in_this_zone:
-        ti.xcom_push(key="years", value=json.dumps(list(years_in_this_zone)))
+        ti.xcom_push(key="years", value=json.dumps(list(years_in_this_bucket)))
         ti.xcom_push(key="cluster_size", value=calculate_cluster_size(len(years_not_in_this_zone)))
         return true_option
     else:
@@ -128,82 +128,88 @@ def get_pod_resources():
 
 
 with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=days_ago(0)) as dag:
-    check_landing_bucket = BranchPythonOperator(
-        task_id="check_landing_bucket",
-        python_callable=check_years,
-        provide_context=True,
-        op_kwargs={"true_option": 'create_gke_cluster',
-                   "false_option": "extraction_finished_with_sucess",
-                   "bucket": f"{PROJECT}-landing",
-                   "years": years}
-    )
+    with TaskGroup(group_id="extract") as extract:
+        check_landing_bucket = BranchPythonOperator(
+            task_id="check_landing_bucket",
+            python_callable=check_years,
+            provide_context=True,
+            op_kwargs={"true_option": 'create_gke_cluster',
+                    "false_option": "extraction_finished_with_sucess",
+                    "bucket": f"{PROJECT}-landing",
+                    "years": years}
+        )
 
-    create_gke_cluster = GKECreateClusterOperator(
-        task_id='create_gke_cluster',
-        project_id=PROJECT,
-        location="southamerica-east1-a",
-        body=get_gke_cluster_def()
-    )
+        create_gke_cluster = GKECreateClusterOperator(
+            task_id='create_gke_cluster',
+            project_id=PROJECT,
+            location="southamerica-east1-a",
+            body=get_gke_cluster_def()
+        )
 
-    with TaskGroup(group_id="extract_years") as extract_years:
-        for year in years:
-            check_extract_year = BranchPythonOperator(
-                task_id=f"check_extract_year_{year}",
-                python_callable=check_year,
-                provide_context=True,
-                op_kwargs={"true_option": f"extract_years.extraction_year_{year}_finished",
-                           "false_option": f"extract_years.extract_year_{year}",
-                           "year": year}
-            )
+        with TaskGroup(group_id="extract_years") as extract_years:
+            for year in years:
+                check_extract_year = BranchPythonOperator(
+                    task_id=f"check_extract_year_{year}",
+                    python_callable=check_year,
+                    provide_context=True,
+                    op_kwargs={"true_option": f"extract.extract_years.extraction_year_{year}_finished",
+                            "false_option": f"extract.extract_years.extract_year_{year}",
+                            "year": year}
+                )
 
-            extract_year = GKEStartPodOperator(
-                task_id=f"extract_year_{year}",
-                project_id=PROJECT,
-                location="southamerica-east1-a",
-                cluster_name="censo-escolar-extraction",
-                namespace="default",
-                image=f"gcr.io/{PROJECT}/censo_escolar_extraction:latest",
-                arguments=["sh", "-c", f'python extract.py {year} {PROJECT}'],
-                resources=get_pod_resources(),
-                name=f"extract-file-{year}",
-                get_logs=True,
-                startup_timeout_seconds=600
-            )
+                extract_year = GKEStartPodOperator(
+                    task_id=f"extract_year_{year}",
+                    project_id=PROJECT,
+                    location="southamerica-east1-a",
+                    cluster_name="censo-escolar-extraction",
+                    namespace="default",
+                    image=f"gcr.io/{PROJECT}/censo_escolar_extraction:latest",
+                    arguments=["sh", "-c", f'python extract.py {year} {PROJECT}'],
+                    resources=get_pod_resources(),
+                    name=f"extract-file-{year}",
+                    get_logs=True,
+                    startup_timeout_seconds=600
+                )
 
-            extraction_year_finished = DummyOperator(
-                task_id=f"extraction_year_{year}_finished",
-                trigger_rule="all_success"
-            )
+                extraction_year_finished = DummyOperator(
+                    task_id=f"extraction_year_{year}_finished",
+                    trigger_rule="all_success"
+                )
 
-            check_extract_year >> extract_year >> extraction_year_finished
-            check_extract_year >> extraction_year_finished
+                check_extract_year >> extract_year >> extraction_year_finished
+                check_extract_year >> extraction_year_finished
 
-    destroy_gke_cluster = GKEDeleteClusterOperator(
-        task_id="destroy_gke_cluster",
-        name="censo-escolar-extraction",
-        project_id=PROJECT,
-        location="southamerica-east1-a",
-        trigger_rule="all_done"
-    )
+        destroy_gke_cluster = GKEDeleteClusterOperator(
+            task_id="destroy_gke_cluster",
+            name="censo-escolar-extraction",
+            project_id=PROJECT,
+            location="southamerica-east1-a",
+            trigger_rule="all_done"
+        )
 
-    extraction_finished_with_sucess = DummyOperator(
-        task_id="extraction_finished_with_sucess",
-        trigger_rule='none_failed'
-    )
+        extraction_finished_with_sucess = DummyOperator(
+            task_id="extraction_finished_with_sucess",
+            trigger_rule='none_failed'
+        )
 
-    check_landing_bucket >> [create_gke_cluster, extraction_finished_with_sucess]
-    create_gke_cluster >> extract_years >> [destroy_gke_cluster, extraction_finished_with_sucess]
+        check_landing_bucket >> [create_gke_cluster, extraction_finished_with_sucess]
+        create_gke_cluster >> extract_years >> [destroy_gke_cluster, extraction_finished_with_sucess]
 
 
-    check_processing_bucket = BranchPythonOperator(
+    TaskGroup(group_id="transform") as transform:
+            check_processing_bucket = BranchPythonOperator(
         task_id="check_processing_bucket",
         python_callable=check_years,
         provide_context=True,
         op_kwargs={"true_option": 'create_dataproc_cluster',
                    "false_option": "transformation_finished_with_sucess",
-                   "bucket": processing_bucket},
+                   "bucket": processing_bucket,
+                   "years": years
+                   },
         trigger_rule="none_failed"
     )
+
+    extract >> transform
 
     # create_dataproc_cluster = DataprocCreateClusterOperator(
     #     task_id="create_dataproc_cluster",
