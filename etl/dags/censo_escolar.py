@@ -146,19 +146,19 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
             body=get_gke_cluster_def()
         )
 
-        with TaskGroup(group_id="extract_years") as extract_years:
+        with TaskGroup(group_id="download_years") as download_years:
             for year in years:
-                check_extract_year = BranchPythonOperator(
-                    task_id=f"check_extract_year_{year}",
+                check_before_download = BranchPythonOperator(
+                    task_id=f"check_before_download_year_{year}",
                     python_callable=check_year,
                     provide_context=True,
-                    op_kwargs={"true_option": f"extract.extract_years.extraction_year_{year}_finished",
-                            "false_option": f"extract.extract_years.extract_year_{year}",
+                    op_kwargs={"true_option": f"extract.download_years.download_year_{year}_finished",
+                            "false_option": f"extract.download_years.download_year_{year}",
                             "year": year}
                 )
 
-                extract_year = GKEStartPodOperator(
-                    task_id=f"extract_year_{year}",
+                download_year = GKEStartPodOperator(
+                    task_id=f"download_year_{year}",
                     project_id=PROJECT,
                     location="southamerica-east1-a",
                     cluster_name="censo-escolar-extraction",
@@ -171,13 +171,13 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
                     startup_timeout_seconds=600
                 )
 
-                extraction_year_finished = DummyOperator(
-                    task_id=f"extraction_year_{year}_finished",
+                download_year_finished = DummyOperator(
+                    task_id=f"download_year_{year}_finished",
                     trigger_rule="all_success"
                 )
 
-                check_extract_year >> extract_year >> extraction_year_finished
-                check_extract_year >> extraction_year_finished
+                check_before_download >> download_year >> download_year_finished
+                check_before_download >> download_year_finished
 
         destroy_gke_cluster = GKEDeleteClusterOperator(
             task_id="destroy_gke_cluster",
@@ -193,7 +193,7 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
         )
 
         check_landing_bucket >> [create_gke_cluster, extraction_finished_with_sucess]
-        create_gke_cluster >> extract_years >> [destroy_gke_cluster, extraction_finished_with_sucess]
+        create_gke_cluster >> download_years >> [destroy_gke_cluster, extraction_finished_with_sucess]
 
 
     with TaskGroup(group_id="transform") as transform:
@@ -242,7 +242,7 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
     #             trigger_rule="all_success"
     #         )
 
-    #         check_transform_year >> transform_year >> extraction_year_finished
+    #         check_transform_year >> transform_year >> download_year_finished
     #         check_transform_year >> transform_year_finished
 
     # destroy_dataproc_cluster = DataprocDeleteClusterOperator(
