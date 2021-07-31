@@ -227,7 +227,7 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
                     region = "us-east1",
                     paramaters = {
                         "PROJECT": PROJECT,
-                        "YEAR": year
+                        "YEAR": str(year)
                     }
                 )
 
