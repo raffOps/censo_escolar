@@ -232,7 +232,7 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
                 )
 
                 transform_year = DataprocInstantiateWorkflowTemplateOperator(
-                    task_id=f"transform.transform_year_{year}",
+                    task_id=f"transform_year_{year}",
                     template_id = "censo-escolar-transform",
                     project_id = PROJECT,
                     region = "us-east1",
