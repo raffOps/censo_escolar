@@ -88,9 +88,14 @@ def get_dataproc_cluster_def():
 
 def get_dataproc_workflow_template(years):
     template = {
-        "id": "censo-escolar-transform"
+        "id": "censo-escolar-transform",
         "name": "censo-escolar-transform",
-        "placement": 
+        "placement": "managed_cluster": {
+            "cluster_name": "censo-escolar-transform",
+            "config": {
+                
+            }
+        }
     }
 
 def get_pyspark_job_def(year):

@@ -199,7 +199,7 @@ if __name__ == "__main__":
         del(matriculas)
         censo = censo.drop("T_CO_ENTIDADE", "D_ID_TURMA", "M_ID_TURMA", "G_CO_ENTIDADE")
         
-        censo.write.partitionBy(partitions).parquet(f"gs://{project}-processing/censo_escolar", compression="snappy")
+        censo.write.partitionBy(partitions).parquet(f"gs://{project}-processing/censo_escolar", compression="snappy", mode="append")
         
         #end = time()
         
