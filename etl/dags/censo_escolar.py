@@ -41,7 +41,7 @@ def calculate_cluster_size(amount_years):
 def get_gke_cluster_def():
     cluster_def = {
         "name": "censo-escolar-extraction",
-        "initial_node_count": '{{ ti.xcom_pull(task_ids="check_landing_bucket", key="cluster_size") }}',
+        "initial_node_count": '{{ ti.xcom_pull(task_ids="extract.check_landing_bucket", key="cluster_size") }}',
         "location": "southamerica-east1-a",
         "node_config": {
             "oauth_scopes": ["https://www.googleapis.com/auth/cloud-platform"],
@@ -107,7 +107,7 @@ def check_year(**context):
     year = context["year"]
     true_option = context["true_option"]
     false_option = context["false_option"]
-    years_in_landing_zone = ti.xcom_pull(task_ids="check_landing_bucket", key="years")
+    years_in_landing_zone = ti.xcom_pull(task_ids="extract.check_landing_bucket", key="years")
     if year in json.loads(years_in_landing_zone):
         return true_option
     else:
