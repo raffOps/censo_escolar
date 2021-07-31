@@ -134,7 +134,7 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
             python_callable=check_years,
             provide_context=True,
             op_kwargs={"true_option": 'extract.create_gke_cluster',
-                    "false_option": "extract.transformation_finished_wih_sucess",
+                    "false_option": "extract.extraction_finished_wih_sucess",
                     "bucket": f"{PROJECT}-landing",
                     "years": years}
         )
@@ -187,13 +187,13 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
             trigger_rule="all_done"
         )
 
-        transformation_finished_wih_sucess = DummyOperator(
-            task_id="transformation_finished_wih_sucess",
+        extraction_finished_wih_sucess = DummyOperator(
+            task_id="extraction_finished_wih_sucess",
             trigger_rule='none_failed'
         )
 
-        check_landing_bucket >> [create_gke_cluster, transformation_finished_wih_sucess]
-        create_gke_cluster >> download >> [destroy_gke_cluster, transformation_finished_wih_sucess]
+        check_landing_bucket >> [create_gke_cluster, extraction_finished_wih_sucess]
+        create_gke_cluster >> download >> [destroy_gke_cluster, extraction_finished_wih_sucess]
 
 
     with TaskGroup(group_id="transform") as transform:
