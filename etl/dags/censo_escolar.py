@@ -146,14 +146,14 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
             body=get_gke_cluster_def()
         )
 
-        with TaskGroup(group_id="download_years") as download_years:
+        with TaskGroup(group_id="download") as download:
             for year in years:
                 check_before_download = BranchPythonOperator(
                     task_id=f"check_before_download_year_{year}",
                     python_callable=check_year,
                     provide_context=True,
-                    op_kwargs={"true_option": f"extract.download_years.download_year_{year}_finished",
-                            "false_option": f"extract.download_years.download_year_{year}",
+                    op_kwargs={"true_option": f"extract.download.download_year_{year}_finished",
+                            "false_option": f"extract.download.download_year_{year}",
                             "year": year}
                 )
 
@@ -193,7 +193,7 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
         )
 
         check_landing_bucket >> [create_gke_cluster, extraction_finished_with_sucess]
-        create_gke_cluster >> download_years >> [destroy_gke_cluster, extraction_finished_with_sucess]
+        create_gke_cluster >> download >> [destroy_gke_cluster, extraction_finished_with_sucess]
 
 
     with TaskGroup(group_id="transform") as transform:
