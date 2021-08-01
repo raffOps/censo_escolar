@@ -237,7 +237,8 @@ with DAG(dag_id="censo-escolar",
 
         create_workflow_template = DataprocCreateWorkflowTemplateOperator(
             task_id="create_workflow_template",
-            template='{{ json.loads(ti.xcom_pull(task_ids="transform.check_processing_bucket", key="dataproc_workflow")) }}',
+            template=json.loads(
+                '{{ ti.xcom_pull(task_ids="transform.check_processing_bucket", key="dataproc_workflow") }}'),
             project_id=PROJECT,
             location="us-east1",
         )
