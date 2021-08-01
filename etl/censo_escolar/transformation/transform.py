@@ -58,11 +58,9 @@ def load_csv(file, bucket_prefix, year, region=None):
         else:
             file = f"gs://{bucket_prefix}-landing/censo-escolar/{year}/{file}.csv"
 
-        df = spark \
-            .read \
-            .options(header=True, delimiter="|", encoding="utf8") \
-            .schema(schema=schema) \
-            .csv(file)
+        df = spark.read.options(header=True, 
+                                delimiter="|",
+                                encoding="utf8").schema(schema=schema).csv(file)
     return df
 
 
@@ -195,12 +193,9 @@ def main(project="rjr-dados-abertos", year="2020"):
         del(matriculas)
         censo = censo.drop("T_CO_ENTIDADE", "D_ID_TURMA", "M_ID_TURMA", "G_CO_ENTIDADE")
         logging.info(f"{year} - {region}: saving")
-        censo \
-            .write \
-            .partitionBy(partitions) \
-            .parquet(f"gs://{project}-processing/censo_escolar",
-                     compression="snappy",
-                     mode="append")
+        censo.write.partitionBy(partitions).parquet(f"gs://{project}-processing/censo_escolar",
+                                                    compression="snappy",
+                                                    mode="append")
 
 
 if __name__ == "__main__":
