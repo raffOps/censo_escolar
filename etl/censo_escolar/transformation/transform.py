@@ -169,15 +169,6 @@ def main(project="rjr-dados-abertos", year="2020"):
     regions = ["co", "nordeste", "norte", "sudeste", "sul"]
     partitions = ["E_NU_ANO_CENSO", "E_CO_UF"]
 
-    print(project)
-    print(year)
-
-    # if args:
-    #     project, year = *args
-    # else:
-    #     project = "rjr-dados-abertos"
-    #     year = "2020"
-
     escolas = transform("escolas", project, year)
     escolas = add_prefix_in_columns(escolas, "E")
     turmas = transform("turmas", project, year)
@@ -204,7 +195,8 @@ def main(project="rjr-dados-abertos", year="2020"):
             .write \
             .partitionBy(partitions) \
             .parquet(f"gs://{project}-processing/censo_escolar",
-                     compression="snappy")
+                     compression="snappy",
+                     mode="append")
 
 
 if __name__ == "__main__":
