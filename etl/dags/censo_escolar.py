@@ -28,7 +28,8 @@ PROJECT = Variable.get("PROJECT")
 FIRST_YEAR = int(Variable.get("CENSO_ESCOLAR_FIRST_YEAR"))
 LAST_YEAR = int(Variable.get("CENSO_ESCOLAR_LAST_YEAR"))
 
-LANDING_BUCKET = f"{PROJECT}-landing"
+#LANDING_BUCKET = f"{PROJECT}-landing"
+LANDING_BUCKET = f"{PROJECT}-consumer"
 PROCESSING_BUCKET = f"{PROJECT}-processing"
 CONSUMER_BUCKET = f"{PROJECT}-consumer"
 SCRIPTS_BUCKET = f"{PROJECT}-scripts"
@@ -50,8 +51,6 @@ def check_years(**context):
     if years_not_in_this_bucket:
         ti.xcom_push(key="years_not_in_this_bucket",
                      value=" ".join(years_not_in_this_bucket))
-        ti.xcom_push(key="dfsdfsdfsdfsd",
-                     value=len(" ".join(years_not_in_this_bucket).split(" ")))
         return true_option
     else:
         return false_option
