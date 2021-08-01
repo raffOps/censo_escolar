@@ -130,7 +130,7 @@ def get_dataproc_workflow():
 
     prev_job = None
     jobs = []
-    years = get_json()
+    years = get_json()["json"]
     for year_ in years.split(" "):
         step_id = f"censo-transform-{year_}",
         job = {
