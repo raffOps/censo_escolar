@@ -1,4 +1,3 @@
-import json
 from datetime import datetime
 import logging
 import re
@@ -22,19 +21,24 @@ from airflow.providers.google.cloud.operators.dataproc import (
 from kubernetes.client import V1ResourceRequirements
 from google.cloud import storage
 
+logging.basicConfig(level="INFO")
+
 
 PROJECT = Variable.get("PROJECT")
 FIRST_YEAR = int(Variable.get("CENSO_ESCOLAR_FIRST_YEAR"))
 LAST_YEAR = int(Variable.get("CENSO_ESCOLAR_LAST_YEAR"))
 
-#LANDING_BUCKET = f"{PROJECT}-landing"
-LANDING_BUCKET = f"{PROJECT}-consumer"
+LANDING_BUCKET = f"{PROJECT}-landing"
 PROCESSING_BUCKET = f"{PROJECT}-processing"
 CONSUMER_BUCKET = f"{PROJECT}-consumer"
 SCRIPTS_BUCKET = f"{PROJECT}-scripts"
 YEARS = list(map(str, range(FIRST_YEAR, LAST_YEAR + 1)))
 
 NOW = datetime.now().isoformat()
+
+
+def calculate_cluster_size(amount_years):
+    return ceil(amount_years/2) + 1
 
 
 def check_years(**context):
@@ -50,8 +54,10 @@ def check_years(**context):
     if years_not_in_this_bucket:
         ti.xcom_push(key="years_not_in_this_bucket",
                      value=years_not_in_this_bucket)
-        with open(f"years_not_in_this_bucket.json", "w") as file:
-            json.dump(years_not_in_this_bucket, file)
+        ti.xcom_push(key="cluster_size",
+                     value=calculate_cluster_size(len(years_not_in_this_bucket)))
+        ti.xcom_push(key="years_not_in_this_bucket_str",
+                     value=" ".join(years_not_in_this_bucket))
         return true_option
     else:
         return false_option
@@ -70,17 +76,10 @@ def check_year(**context):
         return false_option
 
 
-def calculate_cluster_size():
-    with open(f"years_not_in_this_bucket.json", "r") as file:
-        years = json.load(file)
-    size = len(years.split(" "))
-    return ceil(size/2) + 1
-
-
 def get_gke_cluster_def():
     cluster_def = {
         "name": "censo-escolar-extraction",
-        "initial_node_count": calculate_cluster_size(),
+        "initial_node_count": '{{ ti.xcom_pull(task_ids="check_landing_zone", key="cluster_size") }}',
         "location": "southamerica-east1-a",
         "node_config": {
             "oauth_scopes": ["https://www.googleapis.com/auth/cloud-platform"],
@@ -130,9 +129,8 @@ def get_dataproc_workflow():
 
     prev_job = None
     jobs = []
-    with open(f"years_not_in_this_bucket.json", "r") as file:
-        years = json.load(file)
-    for year_ in years:
+    years = '{{ ti.xcom_pull(task_ids="transform.check_processing_bucket", key="years_not_in_this_bucket") }}'
+    for year_ in years.split(" "):
         step_id = f"censo-transform-{year_}",
         job = {
             "sted_id": step_id,
