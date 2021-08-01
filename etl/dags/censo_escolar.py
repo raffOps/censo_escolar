@@ -100,6 +100,9 @@ def get_gke_cluster_def():
     return cluster_def
 
 
+def get_json():
+    return {"json": '{{ ti.xcom_pull(task_ids="transform.check_processing_bucket", key="years_not_in_this_bucket_str") }}'}
+
 def get_dataproc_workflow():
     workflow = {
         "id": f"censo-escolar-transform-{NOW}",
@@ -127,7 +130,7 @@ def get_dataproc_workflow():
 
     prev_job = None
     jobs = []
-    years = '{{ ti.xcom_pull(task_ids="transform.check_processing_bucket", key="years_not_in_this_bucket_str") }}'
+    years = get_json()
     for year_ in years.split(" "):
         step_id = f"censo-transform-{year_}",
         job = {
