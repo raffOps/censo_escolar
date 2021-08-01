@@ -69,6 +69,8 @@ def check_year(**context):
 def calculate_cluster_size():
     years = '{{ json.loads(ti.xcom_pull(task_ids="check_landing_bucket", key="years_not_in_this_bucket")) }}'
     print(years)
+    if type(years) != list:
+        raise Exception("erro")
     size = len(years)
     return ceil(size/2) + 1
 
