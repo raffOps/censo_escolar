@@ -1,6 +1,7 @@
+from datetime import datetime
 import json
-from math import ceil
 import re
+from math import ceil
 
 from airflow import DAG
 from airflow.utils.dates import days_ago
@@ -22,12 +23,13 @@ PROJECT = Variable.get("PROJECT")
 FIRST_YEAR = int(Variable.get("CENSO_ESCOLAR_FIRST_YEAR"))
 LAST_YEAR = int(Variable.get("CENSO_ESCOLAR_LAST_YEAR"))
 
-landing_bucket = f"{PROJECT}-landing"
-processing_bucket = f"{PROJECT}-processing"
-consumer_bucket = f"{PROJECT}-consumer"
-scripts_buckets = f"{PROJECT}-scripts"
-years = list(range(FIRST_YEAR, LAST_YEAR + 1))
+LANDING_BUCKET = f"{PROJECT}-landing"
+PROCESSING_BUCKET = f"{PROJECT}-processing"
+CONSUMER_BUCKET = f"{PROJECT}-consumer"
+SCRIPTS_BUCKET = f"{PROJECT}-scripts"
+YEARS = list(range(FIRST_YEAR, LAST_YEAR + 1))
 
+NOW = datetime.now().isoformat()
 
 
 def calculate_cluster_size(amount_years):
@@ -47,40 +49,47 @@ def get_gke_cluster_def():
     return cluster_def
 
 
-#def get_dataproc_cluster_def():
-    # cluster_def = {
-    #     "master_config": {
-    #         "num_instances": 1,
-    #         "machine_type_uri": "n1-highmem-8",
-    #         "disk_config": {"boot_disk_type": "pd-ssd", "boot_disk_size_gb": 1024},
-    #     },
-    #     "worker_config": {
-    #         "num_instances": 2,
-    #         "machine_type_uri": "n1-highmem-4",
-    #         "disk_config": {"boot_disk_type": "pd-ssd", "boot_disk_size_gb": 1024}
-    #     },
-    #     "software_config": {
-    #         "image_version": "2.0-debian10"
-    #     },
-    #     "gce_cluster_config": {
-    #         "service_account": f"etl-service-account@{PROJECT}.iam.gserviceaccount.com",
-    #         "service_account_scopes": ["cloud-platform"]
-    #     }
-    # }
+def get_dataproc_workflow():
+    workflow = {
+        "id": f"censo-transform-{NOW}",
+        "name": "censo-transform",
+        "placement": {
+            "cluster_name": "censo-escolar-transform",
+            "config": {
+                "master_config": {
+                    "num_instances": 1,
+                    "machine_type_uri": "n1-highmem-8"
+                },
+                "worker_config": {
+                    "num_instances": 2,
+                    "machine_type_uri": "n1-highmem-8"
+                }
+            }
+        },
+        "jobs": []
+    }
 
-    # cluster_def = {
-    #     "master_config": {
-    #         "num_instances": 1,
-    #         "machine_type_uri": "n1-standard-4",
-    #         "disk_config": {"boot_disk_type": "pd-standard", "boot_disk_size_gb": 1024},
-    #     },
-    #     "worker_config": {
-    #         "num_instances": 2,
-    #         "machine_type_uri": "n1-standard-4",
-    #         "disk_config": {"boot_disk_type": "pd-standard", "boot_disk_size_gb": 1024},
-    #     }
-    # }
-    # return cluster_def
+    prev_job = None
+    jobs = []
+    for year_ in YEARS:
+        step_id = f"censo-transform-{year_}",
+        job = {
+            "sted_id": step_id,
+            "pyspark_job": {
+                "main_python_file_uri": f"gs://{PROCESSING_BUCKET}/censo_escolar/transformation/transform.py",
+                "args": [PROJECT, year_]
+            }
+        }
+
+        if prev_job:
+            job["prerequisite_step_ids"] = prev_job
+
+        prev_job = step_id
+        jobs.append(job)
+
+    workflow["jobs"] = jobs
+
+    return workflow
 
 
 def check_years(**context):
@@ -90,16 +99,14 @@ def check_years(**context):
     client = storage.Client()
     bucket = client.get_bucket(context["bucket"])
     years_in_this_bucket = set([int(re.findall("([0-9]{4})\/", blob.name)[0])
-                             for blob in list(bucket.list_blobs(prefix="censo-escolar"))
-                              if re.findall("([0-9]{4})\/", blob.name)])
+                                for blob in list(bucket.list_blobs(prefix="censo-escolar"))
+                                if re.findall("([0-9]{4})\/", blob.name)])
     years_not_in_this_bucket = set(context["years"]) - years_in_this_bucket
     if years_not_in_this_bucket:
-        ti.xcom_push(key="years_not_in_this_bucket", 
-                        value=json.dumps(list(years_not_in_this_bucket)))
-        ti.xcom_push(key="years_not_in_this_bucket_str", 
-                        value=" ".join(map(str, years_not_in_this_bucket)))
-        ti.xcom_push(key="cluster_size", 
-                        value=calculate_cluster_size(len(years_not_in_this_bucket)))
+        ti.xcom_push(key="years_not_in_this_bucket",
+                     value=json.dumps(list(years_not_in_this_bucket)))
+        ti.xcom_push(key="cluster_size",
+                     value=calculate_cluster_size(len(years_not_in_this_bucket)))
         return true_option
     else:
         return false_option
@@ -110,7 +117,7 @@ def check_year(**context):
     year = context["year"]
     true_option = context["true_option"]
     false_option = context["false_option"]
-    years_not_in_this_bucket = ti.xcom_pull(task_ids=context["task"], 
+    years_not_in_this_bucket = ti.xcom_pull(task_ids=context["task"],
                                             key="years_not_in_this_bucket")
     if year in years_not_in_this_bucket:
         return true_option
@@ -137,11 +144,12 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
             task_id="check_landing_bucket",
             python_callable=check_years,
             provide_context=True,
-            op_kwargs={"true_option": 'extract.create_gke_cluster',
-                    "false_option": "extract.extraction_finished_wih_sucess",
-                    "bucket": f"{PROJECT}-landing",
-                    "years": years
-                }
+            op_kwargs={
+                "true_option": 'extract.create_gke_cluster',
+                "false_option": "extract.extraction_finished_wih_sucess",
+                "bucket": f"{PROJECT}-landing",
+                "years": YEARS
+            }
         )
 
         create_gke_cluster = GKECreateClusterOperator(
@@ -152,16 +160,17 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
         )
 
         with TaskGroup(group_id="download") as download:
-            for year in years:
+            for year in YEARS:
                 check_before_download = BranchPythonOperator(
                     task_id=f"check_before_download_year_{year}",
                     python_callable=check_year,
                     provide_context=True,
-                    op_kwargs={"true_option": f"extract.download.download_year_{year}",
-                            "false_option": f"extract.download.download_year_{year}_finished",
-                            "year": year,
-                            "task":"extract.check_landing_bucket"
-                            }
+                    op_kwargs={
+                        "true_option": f"extract.download.download_year_{year}",
+                        "false_option": f"extract.download.download_year_{year}_finished",
+                        "year": year,
+                        "task": "extract.check_landing_bucket"
+                    }
                 )
 
                 download_year = GKEStartPodOperator(
@@ -171,7 +180,7 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
                     cluster_name="censo-escolar-extraction",
                     namespace="default",
                     image=f"gcr.io/{PROJECT}/censo_escolar_extraction:latest",
-                    arguments=["sh", "-c", f'python extract.py {year} {landing_bucket}'],
+                    arguments=["sh", "-c", f'python extract.py {year} {LANDING_BUCKET}'],
                     resources=get_pod_resources(),
                     name=f"extract-file-{year}",
                     get_logs=True,
@@ -202,38 +211,37 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
         check_landing_bucket >> [create_gke_cluster, extraction_finished_wih_sucess]
         create_gke_cluster >> download >> [destroy_gke_cluster, extraction_finished_wih_sucess]
 
-
     with TaskGroup(group_id="transform") as transform:
         check_processing_bucket = BranchPythonOperator(
             task_id="check_processing_bucket",
             python_callable=check_years,
             provide_context=True,
-            op_kwargs={"true_option": "transform.transform_years",
-                        "false_option": "transform.transformation_finished_with_sucess",
-                        "bucket": processing_bucket,
-                        "years": years
+            op_kwargs={
+                "true_option": "transform.run_dataproc_job",
+                "false_option": "transform.transformation_finished_with_sucess",
+                "bucket": PROCESSING_BUCKET,
+                "years": YEARS
             },
             trigger_rule="none_failed"
         )
 
-        transform_year = DataprocInstantiateWorkflowTemplateOperator(
-                    task_id=f"transform_years",
-                    template_id = "censo-escolar-transform",
-                    project_id = PROJECT,
-                    region = "us-east1",
-                    parameters = {
-                        "PROJECT": PROJECT,
-                        "YEARS": '{{ ti.xcom_pull(task_ids="check_processing_bucket", key="years_not_in_this_bucket_str") }}'
-                    }
-                )
-                    
+        run_dataproc_job = DataprocInstantiateWorkflowTemplateOperator(
+            task_id=f"run_dataproc_job",
+            template_id="censo-escolar-transform",
+            project_id=PROJECT,
+            region="us-east1",
+            parameters={
+                "PROJECT": PROJECT,
+                "YEARS": '{{ ti.xcom_pull(task_ids="check_processing_bucket", key="years_not_in_this_bucket_str") }}'
+            }
+        )
 
         transformation_finished_with_sucess = DummyOperator(
-                task_id="transformation_finished_with_sucess",
-                trigger_rule='none_failed'
-            )
+            task_id="transformation_finished_with_sucess",
+            trigger_rule='none_failed'
+        )
 
-        check_processing_bucket >> [transform_year, transformation_finished_with_sucess]
-        transform_year >> transformation_finished_with_sucess
+        check_processing_bucket >> [run_dataproc_job, transformation_finished_with_sucess]
+        run_dataproc_job >> transformation_finished_with_sucess
 
     extract >> transform
