@@ -200,3 +200,5 @@ if __name__ == "__main__":
                     .partitionBy(partitions) \
                         .parquet(f"gs://{project}-processing/censo_escolar", 
                                                 compression="snappy", mode="append")
+
+            del(censo)
