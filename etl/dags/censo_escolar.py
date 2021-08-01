@@ -133,7 +133,7 @@ def get_dataproc_workflow():
         job = {
             "sted_id": step_id,
             "pyspark_job": {
-                "main_python_file_uri": f"gs://{PROCESSING_BUCKET}/censo_escolar/transformation/transform.py",
+                "main_python_file_uri": f"gs://{SCRIPTS_BUCKET}/censo_escolar/transformation/transform.py",
                 "args": [PROJECT, year_]
             }
         }
