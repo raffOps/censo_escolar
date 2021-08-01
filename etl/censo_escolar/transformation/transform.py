@@ -165,16 +165,15 @@ def transform(file, bucket, year, region=None):
     return df
 
 
-def main(*args):
-    print(args)
+def main(project="rjr-dados-abertos", year="2020"):
     regions = ["co", "nordeste", "norte", "sudeste", "sul"]
     partitions = ["E_NU_ANO_CENSO", "E_CO_UF"]
 
-    if args:
-        project, year = args[0:2]
-    else:
-        project = "rjr-dados-abertos"
-        year = "2020"
+    # if args:
+    #     project, year = *args
+    # else:
+    #     project = "rjr-dados-abertos"
+    #     year = "2020"
 
     escolas = transform("escolas", project, year)
     escolas = add_prefix_in_columns(escolas, "E")
