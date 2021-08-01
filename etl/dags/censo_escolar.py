@@ -50,7 +50,7 @@ def check_years(**context):
     if years_not_in_this_bucket:
         ti.xcom_push(key="years_not_in_this_bucket",
                      value=years_not_in_this_bucket)
-        with open(f"years_not_in_this_bucket_{NOW}.json", "w") as file:
+        with open(f"years_not_in_this_bucket.json", "w") as file:
             json.dump(years_not_in_this_bucket, file)
         return true_option
     else:
@@ -71,7 +71,7 @@ def check_year(**context):
 
 
 def calculate_cluster_size():
-    with open(f"years_not_in_this_bucket_{NOW}.json", "r") as file:
+    with open(f"years_not_in_this_bucket.json", "r") as file:
         years = json.load(file)
     size = len(years.split(" "))
     return ceil(size/2) + 1
@@ -130,7 +130,7 @@ def get_dataproc_workflow():
 
     prev_job = None
     jobs = []
-    with open(f"years_not_in_this_bucket_{NOW}.json", "r") as file:
+    with open(f"years_not_in_this_bucket.json", "r") as file:
         years = json.load(file)
     for year_ in years:
         step_id = f"censo-transform-{year_}",
