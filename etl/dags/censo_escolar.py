@@ -1,3 +1,4 @@
+import json
 from datetime import datetime
 import logging
 import re
@@ -20,8 +21,6 @@ from airflow.providers.google.cloud.operators.dataproc import (
 )
 from kubernetes.client import V1ResourceRequirements
 from google.cloud import storage
-
-logging.basicConfig(level="INFO")
 
 
 PROJECT = Variable.get("PROJECT")
@@ -50,7 +49,9 @@ def check_years(**context):
     years_not_in_this_bucket = set(context["years"]) - years_in_this_bucket
     if years_not_in_this_bucket:
         ti.xcom_push(key="years_not_in_this_bucket",
-                     value=" ".join(years_not_in_this_bucket))
+                     value=years_not_in_this_bucket)
+        with open(f"years_not_in_this_bucket_{NOW}.json", "w") as file:
+            json.dump(years_not_in_this_bucket, file)
         return true_option
     else:
         return false_option
@@ -63,14 +64,15 @@ def check_year(**context):
     false_option = context["false_option"]
     years_not_in_this_bucket = ti.xcom_pull(task_ids=context["task"],
                                             key="years_not_in_this_bucket")
-    if year in years_not_in_this_bucket.split():
+    if year in years_not_in_this_bucket:
         return true_option
     else:
         return false_option
 
 
 def calculate_cluster_size():
-    years = '{{ ti.xcom_pull(task_ids="extract.check_landing_bucket", key="years_not_in_this_bucket") }}'
+    with open(f"years_not_in_this_bucket_{NOW}.json", "r") as file:
+        years = json.load(file)
     size = len(years.split(" "))
     return ceil(size/2) + 1
 
@@ -128,8 +130,9 @@ def get_dataproc_workflow():
 
     prev_job = None
     jobs = []
-    years = '{{ ti.xcom_pull(task_ids="transform.check_processing_bucket", key="years_not_in_this_bucket") }}'
-    for year_ in years.split(" "):
+    with open(f"years_not_in_this_bucket_{NOW}.json", "r") as file:
+        years = json.load(file)
+    for year_ in years:
         step_id = f"censo-transform-{year_}",
         job = {
             "sted_id": step_id,
