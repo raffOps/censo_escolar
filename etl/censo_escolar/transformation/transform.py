@@ -185,7 +185,7 @@ def main(project="rjr-dados-abertos", year="2020"):
     gestores = transform("gestor", project, year)
     gestores = add_prefix_in_columns(gestores, "G")
     for region in regions:
-        print(region)
+        print(f"{year} - {region}: transforming")
         docentes = transform("docentes", project, year, region)
         docentes = add_prefix_in_columns(docentes, "D")
         matriculas = transform("matricula", project, year, region)
@@ -199,12 +199,12 @@ def main(project="rjr-dados-abertos", year="2020"):
         del(docentes)
         del(matriculas)
         censo = censo.drop("T_CO_ENTIDADE", "D_ID_TURMA", "M_ID_TURMA", "G_CO_ENTIDADE")
-
+        print(f"{year} - {region}: saving")
         censo \
             .write \
             .partitionBy(partitions) \
             .parquet(f"gs://{project}-processing/censo_escolar",
-                     compression="snappy", mode="append")
+                     compression="snappy")
 
 
 if __name__ == "__main__":
