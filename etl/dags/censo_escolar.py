@@ -97,7 +97,7 @@ def check_years(**context):
         ti.xcom_push(key="years_not_in_this_bucket", 
                         value=json.dumps(list(years_not_in_this_bucket)))
         ti.xcom_push(key="years_not_in_this_bucket_str", 
-                        value=" ".join[map(str, years_not_in_this_bucket)])
+                        value=" ".join(map(str, years_not_in_this_bucket))
         ti.xcom_push(key="cluster_size", 
                         value=calculate_cluster_size(len(years_not_in_this_bucket)))
         return true_option
