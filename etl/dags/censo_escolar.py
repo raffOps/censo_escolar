@@ -50,8 +50,8 @@ def check_years(**context):
     if years_not_in_this_bucket:
         ti.xcom_push(key="years_not_in_this_bucket",
                      value=" ".join(years_not_in_this_bucket))
-        ti.xcom_push(key="cluster_size",
-                     value=len(years_not_in_this_bucket))
+        ti.xcom_push(key="dfsdfsdfsdfsd",
+                     value=len(" ".join(years_not_in_this_bucket).split(" ")))
         return true_option
     else:
         return false_option
@@ -72,7 +72,7 @@ def check_year(**context):
 
 def calculate_cluster_size():
     years = '{{ ti.xcom_pull(task_ids="extract.check_landing_bucket", key="years_not_in_this_bucket") }}'
-    size = len(years.split())
+    size = len(years.split(" "))
     return ceil(size/2) + 1
 
 
