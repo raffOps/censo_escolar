@@ -70,7 +70,7 @@ def check_year(**context):
 
 def calculate_cluster_size():
     years = '{{ ti.xcom_pull(task_ids="check_landing_bucket", key="years_not_in_this_bucket") }}'
-    size = len(years.split())
+    size = len(years.split(" "))
     logging.info(years)
     logging.info(size)
     logging.info(ceil(size/2) + 1)
@@ -131,7 +131,7 @@ def get_dataproc_workflow():
     prev_job = None
     jobs = []
     years = '{{ ti.xcom_pull(task_ids="check_processing_bucket", key="years_not_in_this_bucket") }}'
-    for year_ in years.split():
+    for year_ in years.split(" "):
         step_id = f"censo-transform-{year_}",
         job = {
             "sted_id": step_id,
