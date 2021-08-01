@@ -99,9 +99,27 @@ def get_gke_cluster_def():
     }
     return cluster_def
 
+def get_jobs():
+    prev_job = None
+    jobs = []
+    years = '{{ ti.xcom_pull(task_ids="transform.check_processing_bucket", key="years_not_in_this_bucket_str") }}'
+    for year_ in years.split(" "):
+        step_id = f"censo-transform-{year_}",
+        job = {
+            "sted_id": step_id,
+            "pyspark_job": {
+                "main_python_file_uri": f"gs://{SCRIPTS_BUCKET}/censo_escolar/transformation/transform.py",
+                "args": [PROJECT, year_]
+            }
+        }
 
-def get_json():
-    return {"json": '{{ ti.xcom_pull(task_ids="transform.check_processing_bucket", key="years_not_in_this_bucket_str") }}'}
+        if prev_job:
+            job["prerequisite_step_ids"] = prev_job
+
+        prev_job = step_id
+        jobs.append(job)
+
+    return jobs
 
 def get_dataproc_workflow():
     workflow = {
@@ -125,29 +143,8 @@ def get_dataproc_workflow():
                 }
             },
         },
-        "jobs": []
+        "jobs": get_jobs()
     }
-
-    prev_job = None
-    jobs = []
-    years = get_json()["json"]
-    for year_ in years.split(" "):
-        step_id = f"censo-transform-{year_}",
-        job = {
-            "sted_id": step_id,
-            "pyspark_job": {
-                "main_python_file_uri": f"gs://{SCRIPTS_BUCKET}/censo_escolar/transformation/transform.py",
-                "args": [PROJECT, year_]
-            }
-        }
-
-        if prev_job:
-            job["prerequisite_step_ids"] = prev_job
-
-        prev_job = step_id
-        jobs.append(job)
-
-    workflow["jobs"] = jobs
 
     return workflow
 
