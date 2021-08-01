@@ -9,7 +9,7 @@ from pyspark.sql.functions import (udf, col, expr)
 from google.cloud import storage
 
 spark = SparkSession.builder.appName("censo").getOrCreate()
-spark.conf.set("spark.sql.repl.eagerEval.enabled", True)
+logging.basicConfig(level=logging.INFO)
 
 
 def add_prefix_in_columns(df, prefix):
