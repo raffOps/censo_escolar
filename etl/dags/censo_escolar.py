@@ -28,7 +28,8 @@ PROJECT = Variable.get("PROJECT")
 FIRST_YEAR = int(Variable.get("CENSO_ESCOLAR_FIRST_YEAR"))
 LAST_YEAR = int(Variable.get("CENSO_ESCOLAR_LAST_YEAR"))
 
-LANDING_BUCKET = f"{PROJECT}-landing"
+#LANDING_BUCKET = f"{PROJECT}-landing"
+LANDING_BUCKET = f"{PROJECT}-processing"
 PROCESSING_BUCKET = f"{PROJECT}-processing"
 CONSUMER_BUCKET = f"{PROJECT}-consumer"
 SCRIPTS_BUCKET = f"{PROJECT}-scripts"
