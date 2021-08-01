@@ -94,8 +94,12 @@ def check_years(**context):
                               if re.findall("([0-9]{4})\/", blob.name)])
     years_not_in_this_bucket = set(context["years"]) - years_in_this_bucket
     if years_not_in_this_bucket:
-        ti.xcom_push(key="years_not_in_this_bucket", value=json.dumps(list(years_not_in_this_bucket)))
-        ti.xcom_push(key="cluster_size", value=calculate_cluster_size(len(years_not_in_this_bucket)))
+        ti.xcom_push(key="years_not_in_this_bucket", 
+                        value=json.dumps(list(years_not_in_this_bucket)))
+        ti.xcom_push(key="years_not_in_this_bucket_str", 
+                        value=" ".join[map(str, years_not_in_this_bucket)])
+        ti.xcom_push(key="cluster_size", 
+                        value=calculate_cluster_size(len(years_not_in_this_bucket)))
         return true_option
     else:
         return false_option
@@ -108,7 +112,7 @@ def check_year(**context):
     false_option = context["false_option"]
     years_not_in_this_bucket = ti.xcom_pull(task_ids=context["task"], 
                                             key="years_not_in_this_bucket")
-    if year in json.loads(years_not_in_this_bucket):
+    if year in years_not_in_this_bucket:
         return true_option
     else:
         return false_option
@@ -204,7 +208,7 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
             task_id="check_processing_bucket",
             python_callable=check_years,
             provide_context=True,
-            op_kwargs={"true_option": "transform.dummy_transform",
+            op_kwargs={"true_option": "transform.transform_years",
                         "false_option": "transform.transformation_finished_with_sucess",
                         "bucket": processing_bucket,
                         "years": years
@@ -212,50 +216,24 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
             trigger_rule="none_failed"
         )
 
-
-        dummy_transform = DummyOperator(
-            task_id="dummy_transform"
-        )
-
-
-        with TaskGroup(group_id="transform_years") as transform_years:
-            for year in years:
-                check_before_transform = BranchPythonOperator(
-                    task_id=f"check_before_transform_{year}",
-                    python_callable=check_year,
-                    provide_context=True,
-                    op_kwargs={"true_option": f"transform.transform_years.transform_year_{year}",
-                            "false_option": f"transform.transform_years.transform_year_{year}_finished",
-                            "year": year,
-                            "task": "transform.check_processing_bucket"
-                            }
-                )
-
-                transform_year = DataprocInstantiateWorkflowTemplateOperator(
-                    task_id=f"transform_year_{year}",
+        transform_year = DataprocInstantiateWorkflowTemplateOperator(
+                    task_id=f"transform_years",
                     template_id = "censo-escolar-transform",
                     project_id = PROJECT,
                     region = "us-east1",
                     parameters = {
                         "PROJECT": PROJECT,
-                        "YEAR": str(year)
+                        "YEARS": '{{ ti.xcom_pull(task_ids="check_processing_bucket", key="years_not_in_this_bucket_str") }}'
                     }
                 )
-
-                transform_year_finished = DummyOperator(
-                    task_id=f"transform_year_{year}_finished",
-                    trigger_rule="all_success"
-                )
-
-                check_before_transform >> transform_year >> transform_year_finished
-                check_before_transform >> transform_year_finished
+                    
 
         transformation_finished_with_sucess = DummyOperator(
                 task_id="transformation_finished_with_sucess",
                 trigger_rule='none_failed'
             )
 
-        check_processing_bucket >> [dummy_transform, transformation_finished_with_sucess]
-        dummy_transform >> transform_years >> transformation_finished_with_sucess
+        check_processing_bucket >> [transform, transformation_finished_with_sucess]
+        transform >> transformation_finished_with_sucess
 
     extract >> transform

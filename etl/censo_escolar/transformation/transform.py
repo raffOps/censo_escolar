@@ -164,50 +164,39 @@ def transform(file, bucket, year, region=None):
         return df
 
 
-# In[ ]:
-
-
 regions =  ["co", "nordeste", "norte", "sudeste", "sul"]
 partitions = ["E_NU_ANO_CENSO", "E_CO_UF"]
-#regions =  ["norte"]
 if __name__ == "__main__":
     if sys.argv[1:]:
-        project, year = sys.argv[1:3]
+        project, years = sys.argv[1:3]
     else:
         project = "rjr-dados-abertos"
-        year = "2019"
-        
-    escolas = transform("escolas", project, year)
-    escolas = add_prefix_in_columns(escolas, "E")
-    turmas =  transform("turmas", project, year)
-    turmas = add_prefix_in_columns(turmas, "T")
-    gestores =  transform("gestor", project, year)
-    gestores = add_prefix_in_columns(gestores, "G")
-    for region in regions:
-        #begin = time()
-        docentes =  transform("docentes", project, year, region)
-        docentes = add_prefix_in_columns(docentes, "D")
-        matriculas = transform("matricula", project, year, region)
-        matriculas = add_prefix_in_columns(matriculas, "M")
-        
-        censo = escolas.join(turmas, escolas.E_CO_ENTIDADE == turmas.T_CO_ENTIDADE)
-        censo = censo.join(gestores, censo.E_CO_ENTIDADE == gestores.G_CO_ENTIDADE)
-        censo = censo.join(docentes, censo.T_ID_TURMA == docentes.D_ID_TURMA)
-        censo = censo.join(matriculas, censo.T_ID_TURMA == matriculas.M_ID_TURMA)
-        
-        del(docentes)
-        del(matriculas)
-        censo = censo.drop("T_CO_ENTIDADE", "D_ID_TURMA", "M_ID_TURMA", "G_CO_ENTIDADE")
-        
-        censo.write.partitionBy(partitions).parquet(f"gs://{project}-processing/censo_escolar", compression="snappy", mode="append")
-        
-        #end = time()
-        
-        #print(f"{region}: {(end-begin)/60} m")
-
-
-# In[ ]:
-
-
-
-
+        year = ["2019"]
+    
+    for year in years:      
+        escolas = transform("escolas", project, year)
+        escolas = add_prefix_in_columns(escolas, "E")
+        turmas =  transform("turmas", project, year)
+        turmas = add_prefix_in_columns(turmas, "T")
+        gestores =  transform("gestor", project, year)
+        gestores = add_prefix_in_columns(gestores, "G")
+        for region in regions:
+            docentes =  transform("docentes", project, year, region)
+            docentes = add_prefix_in_columns(docentes, "D")
+            matriculas = transform("matricula", project, year, region)
+            matriculas = add_prefix_in_columns(matriculas, "M")
+            
+            censo = escolas.join(turmas, escolas.E_CO_ENTIDADE == turmas.T_CO_ENTIDADE)
+            censo = censo.join(gestores, censo.E_CO_ENTIDADE == gestores.G_CO_ENTIDADE)
+            censo = censo.join(docentes, censo.T_ID_TURMA == docentes.D_ID_TURMA)
+            censo = censo.join(matriculas, censo.T_ID_TURMA == matriculas.M_ID_TURMA)
+            
+            del(docentes)
+            del(matriculas)
+            censo = censo.drop("T_CO_ENTIDADE", "D_ID_TURMA", "M_ID_TURMA", "G_CO_ENTIDADE")
+            
+            censo \
+                .write \
+                    .partitionBy(partitions) \
+                        .parquet(f"gs://{project}-processing/censo_escolar", 
+                                                compression="snappy", mode="append")
