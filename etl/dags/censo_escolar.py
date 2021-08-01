@@ -50,7 +50,7 @@ def check_years(**context):
     years_not_in_this_bucket = set(context["years"]) - years_in_this_bucket
     if years_not_in_this_bucket:
         ti.xcom_push(key="years_not_in_this_bucket",
-                     value=" ".join(years_not_in_this_bucket))
+                     value=" ".join(years_not_in_this_bucket)
         # ti.xcom_push(key="cluster_size",
         #              value=calculate_cluster_size(len(years_not_in_this_bucket)))
         # ti.xcom_push(key="years_not_in_this_bucket_str",
@@ -85,15 +85,17 @@ def get_pod_resources():
         }
     )
 
-def calculate_cluster_size():
+def calculate_cluster_size(amount_years):
     years = '{{ ti.xcom_pull(task_ids="extract.check_landing_bucket", key="years_not_in_this_bucket") }}'
     size = len(years.split())
-    return ceil(size/2) + 1
+    if not (ceil(amount_years/2) + 1):
+        raise Exception("teste")
+    return ceil(amount_years/2) + 1
 
 def get_gke_cluster_def():
     cluster_def = {
         "name": "censo-escolar-extraction",
-        "initial_node_count": calculate_cluster_size(),
+        "initial_node_count": '{{ ti.xcom_pull(task_ids="extract.check_landing_bucket", key="cluster_size") }}',
         "location": "southamerica-east1-a",
         "node_config": {
             "oauth_scopes": ["https://www.googleapis.com/auth/cloud-platform"],
