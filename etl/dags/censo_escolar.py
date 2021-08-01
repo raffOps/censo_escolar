@@ -85,7 +85,7 @@ def get_pod_resources():
         }
     )
 
-def calculate_cluster_size(amount_years):
+def calculate_cluster_size():
     years = '{{ ti.xcom_pull(task_ids="extract.check_landing_bucket", key="years_not_in_this_bucket") }}'
     size = len(years.split())
     return ceil(size/2) + 1
