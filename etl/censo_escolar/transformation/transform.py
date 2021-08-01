@@ -1,18 +1,11 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[1]:
-
-
 import json
 import sys
 from datetime import datetime
+
 from pyspark.sql import SparkSession
 from pyspark.sql.types import *
 from pyspark.sql.functions import (udf, col, expr)
-
 from google.cloud import storage
-from time import time
 
 spark = SparkSession.builder.appName("censo").getOrCreate()
 spark.conf.set("spark.sql.repl.eagerEval.enabled", True)
@@ -168,29 +161,31 @@ def transform(file, bucket, year, region=None):
     df = transform_string_columns(df, bucket)
     df = transform_boolean_columns(df)
     df = transform_integer_columns(df)
-    df = transform_date_columns(df, bucket, year)
+    df = transform_date_columns(df, file, year)
     return df
 
 
-REGIONS = ["co", "nordeste", "norte", "sudeste", "sul"]
-PARTITIONS = ["E_NU_ANO_CENSO", "E_CO_UF"]
-if __name__ == "__main__":
-    if sys.argv[1:]:
-        PROJECT, YEAR = sys.argv[1:3]
-    else:
-        PROJECT = "rjr-dados-abertos"
-        YEAR = "2019"
+def main(*args):
+    regions = ["co", "nordeste", "norte", "sudeste", "sul"]
+    partitions = ["E_NU_ANO_CENSO", "E_CO_UF"]
 
-    escolas = transform("escolas", PROJECT, YEAR)
+    if args:
+        project, year = args[0:2]
+    else:
+        project = "rjr-dados-abertos"
+        year = "2020"
+
+    escolas = transform("escolas", project, year)
     escolas = add_prefix_in_columns(escolas, "E")
-    turmas = transform("turmas", PROJECT, YEAR)
+    turmas = transform("turmas", project, year)
     turmas = add_prefix_in_columns(turmas, "T")
-    gestores = transform("gestor", PROJECT, YEAR)
+    gestores = transform("gestor", project, year)
     gestores = add_prefix_in_columns(gestores, "G")
-    for region in REGIONS:
-        docentes = transform("docentes", PROJECT, YEAR, region)
+    for region in regions:
+        print(region)
+        docentes = transform("docentes", project, year, region)
         docentes = add_prefix_in_columns(docentes, "D")
-        matriculas = transform("matricula", PROJECT, YEAR, region)
+        matriculas = transform("matricula", project, year, region)
         matriculas = add_prefix_in_columns(matriculas, "M")
 
         censo = escolas.join(turmas, escolas.E_CO_ENTIDADE == turmas.T_CO_ENTIDADE)
@@ -204,6 +199,11 @@ if __name__ == "__main__":
 
         censo \
             .write \
-            .partitionBy(PARTITIONS) \
-            .parquet(f"gs://{PROJECT}-processing/censo_escolar",
+            .partitionBy(partitions) \
+            .parquet(f"gs://{project}-processing/censo_escolar",
                      compression="snappy", mode="append")
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])
+
