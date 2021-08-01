@@ -21,9 +21,6 @@ from airflow.providers.google.cloud.operators.dataproc import (
 from kubernetes.client import V1ResourceRequirements
 from google.cloud import storage
 
-logging.basicConfig(level="INFO")
-
-
 PROJECT = Variable.get("PROJECT")
 FIRST_YEAR = int(Variable.get("CENSO_ESCOLAR_FIRST_YEAR"))
 LAST_YEAR = int(Variable.get("CENSO_ESCOLAR_LAST_YEAR"))
