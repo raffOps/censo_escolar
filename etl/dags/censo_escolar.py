@@ -95,7 +95,7 @@ def calculate_cluster_size(amount_years):
 def get_gke_cluster_def():
     cluster_def = {
         "name": "censo-escolar-extraction",
-        "initial_node_count": '{{ ti.xcom_pull(task_ids="extract.check_landing_bucket", key="cluster_size") }}',
+        "initial_node_count": calculate_cluster_size(),
         "location": "southamerica-east1-a",
         "node_config": {
             "oauth_scopes": ["https://www.googleapis.com/auth/cloud-platform"],
