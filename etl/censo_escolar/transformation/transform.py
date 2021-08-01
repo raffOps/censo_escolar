@@ -169,6 +169,9 @@ def main(project="rjr-dados-abertos", year="2020"):
     regions = ["co", "nordeste", "norte", "sudeste", "sul"]
     partitions = ["E_NU_ANO_CENSO", "E_CO_UF"]
 
+    print(project)
+    print(year)
+
     # if args:
     #     project, year = *args
     # else:
