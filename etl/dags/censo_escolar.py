@@ -30,7 +30,7 @@ LANDING_BUCKET = f"{PROJECT}-landing"
 PROCESSING_BUCKET = f"{PROJECT}-processing"
 CONSUMER_BUCKET = f"{PROJECT}-consumer"
 SCRIPTS_BUCKET = f"{PROJECT}-scripts"
-YEARS = list(range(FIRST_YEAR, LAST_YEAR + 1))
+YEARS = list(map(str, range(FIRST_YEAR, LAST_YEAR + 1)))
 
 NOW = datetime.now().isoformat()
 
@@ -41,16 +41,13 @@ def check_years(**context):
     false_option = context["false_option"]
     client = storage.Client()
     bucket = client.get_bucket(context["bucket"])
-    years_in_this_bucket = set([int(re.findall("([0-9]{4})\/", blob.name)[0])
+    years_in_this_bucket = set([re.findall("([0-9]{4})\/", blob.name)[0]
                                 for blob in list(bucket.list_blobs(prefix="censo-escolar"))
                                 if re.findall("([0-9]{4})\/", blob.name)])
     years_not_in_this_bucket = set(context["years"]) - years_in_this_bucket
     if years_not_in_this_bucket:
         ti.xcom_push(key="years_not_in_this_bucket",
-                     value=json.dumps(list(years_not_in_this_bucket)))
-        ti.xcom_push(key="years_not_in_this_bucket_str", value=" ".join(map(str, years_not_in_this_bucket)))
-        ti.xcom_push(key="cluster_size",
-                     value=calculate_cluster_size(len(years_not_in_this_bucket)))
+                     value=" ".join(years_not_in_this_bucket))
         return true_option
     else:
         return false_option
@@ -63,20 +60,22 @@ def check_year(**context):
     false_option = context["false_option"]
     years_not_in_this_bucket = ti.xcom_pull(task_ids=context["task"],
                                             key="years_not_in_this_bucket")
-    if year in json.loads(years_not_in_this_bucket):
+    if year in years_not_in_this_bucket.split():
         return true_option
     else:
         return false_option
 
 
-def calculate_cluster_size(amount_years):
-    return ceil(int(amount_years)/2) + 1
+def calculate_cluster_size():
+    years = '{{ ti.xcom_pull(task_ids="check_landing_bucket", key="years_not_in_this_bucket") }}'
+    size = len(years.split())
+    return ceil(size/2) + 1
 
 
 def get_gke_cluster_def():
     cluster_def = {
         "name": "censo-escolar-extraction",
-        "initial_node_count": '{{ ti.xcom_pull(task_ids="extract.check_landing_bucket", key="cluster_size") }}',
+        "initial_node_count": calculate_cluster_size(),
         "location": "southamerica-east1-a",
         "node_config": {
             "oauth_scopes": ["https://www.googleapis.com/auth/cloud-platform"],
@@ -126,7 +125,7 @@ def get_dataproc_workflow():
 
     prev_job = None
     jobs = []
-    years = "{{ ti.xcom_pull(task_ids='check_processing_bucket', key='years_not_in_this_bucket_str'}}"
+    years = '{{ ti.xcom_pull(task_ids="check_processing_bucket", key="years_not_in_this_bucket") }}' 
     for year_ in years.split():
         step_id = f"censo-transform-{year_}",
         job = {
