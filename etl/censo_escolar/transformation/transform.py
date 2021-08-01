@@ -9,7 +9,8 @@ from pyspark.sql.functions import (udf, col, expr)
 from google.cloud import storage
 
 spark = SparkSession.builder.appName("censo").getOrCreate()
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(format="%(asctime)s%(levelname)s: %(message)s",
+                    level=logging.INFO)
 
 
 def add_prefix_in_columns(df, prefix):
