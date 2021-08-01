@@ -208,6 +208,5 @@ def main(project="rjr-dados-abertos", year="2020"):
 
 
 if __name__ == "__main__":
-    print(sys.argv[1:])
-    main(sys.argv[1:])
+    main(*sys.argv[1:])
 
