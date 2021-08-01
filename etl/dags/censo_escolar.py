@@ -69,7 +69,7 @@ def check_year(**context):
 
 
 def calculate_cluster_size():
-    years = '{{ (ti.xcom_pull(task_ids="check_landing_bucket", key="years_not_in_this_bucket") | fromjson) }}'
+    years = '{{ json.loads(ti.xcom_pull(task_ids="check_landing_bucket", key="years_not_in_this_bucket")) }}'
     size = len(json.loads(years))
     return ceil(size/2) + 1
 
@@ -127,7 +127,7 @@ def get_dataproc_workflow():
 
     prev_job = None
     jobs = []
-    years = '{{ (ti.xcom_pull(task_ids="check_processing_bucket", key="years_not_in_this_bucket") | fromjson) }}'
+    years = '{{ json.loads(ti.xcom_pull(task_ids="check_processing_bucket", key="years_not_in_this_bucket")) }}'
     for year_ in years:
         step_id = f"censo-transform-{year_}",
         job = {
@@ -152,7 +152,8 @@ def get_dataproc_workflow():
 with DAG(dag_id="censo-escolar",
          default_args={'owner': 'airflow'},
          start_date=days_ago(0),
-         user_defined_filters={'fromjson': lambda s: json.loads(s)}) as dag:
+         user_defined_macros={'json': json}
+         ) as dag:
     with TaskGroup(group_id="extract") as extract:
         check_landing_bucket = BranchPythonOperator(
             task_id="check_landing_bucket",
