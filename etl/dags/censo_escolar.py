@@ -42,6 +42,19 @@ def calculate_cluster_size(amount_years):
     return ceil(amount_years/2) + 1
 
 
+def get_gke_cluster_def():
+    cluster_def = {
+        "name": "censo-escolar-extraction",
+        "initial_node_count": '{{ ti.xcom_pull(task_ids="check_landing_zone", key="cluster_size") }}',
+        "location": "southamerica-east1-a",
+        "node_config": {
+            "oauth_scopes": ["https://www.googleapis.com/auth/cloud-platform"],
+            "machine_type": "e2-standard-4"
+        },
+    }
+    return cluster_def
+
+
 def check_years(**context):
     ti = context["ti"]
     true_option = context["true_option"]
@@ -75,19 +88,6 @@ def check_year(**context):
         return true_option
     else:
         return false_option
-
-
-def get_gke_cluster_def():
-    cluster_def = {
-        "name": "censo-escolar-extraction",
-        "initial_node_count": '{{ ti.xcom_pull(task_ids="check_landing_zone", key="cluster_size") }}',
-        "location": "southamerica-east1-a",
-        "node_config": {
-            "oauth_scopes": ["https://www.googleapis.com/auth/cloud-platform"],
-            "machine_type": "e2-standard-4"
-        },
-    }
-    return cluster_def
 
 
 def get_pod_resources():
