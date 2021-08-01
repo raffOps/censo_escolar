@@ -147,7 +147,11 @@ def get_dataproc_workflow(years):
     return workflow
 
 
-with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=days_ago(0)) as dag:
+with DAG(dag_id="censo-escolar",
+         default_args={'owner': 'airflow'},
+         start_date=days_ago(0),
+         user_defined_macros={'json': json}
+         ) as dag:
     with TaskGroup(group_id="extract") as extract:
         check_landing_bucket = BranchPythonOperator(
             task_id="check_landing_bucket",
@@ -236,7 +240,7 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
 
         create_workflow_template = DataprocCreateWorkflowTemplateOperator(
             task_id="create_workflow_template",
-            template='{{ ti.xcom_pull(task_ids="transform.check_processing_bucket", key="dataproc_workflow") }}',
+            template='{{ json.loads(ti.xcom_pull(task_ids="transform.check_processing_bucket", key="dataproc_workflow")) }}',
             project_id=PROJECT,
             location="us-east1",
         )
