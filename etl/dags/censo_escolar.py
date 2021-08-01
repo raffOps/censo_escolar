@@ -54,7 +54,7 @@ def check_years(**context):
     years_not_in_this_bucket = set(context["years"]) - years_in_this_bucket
     if years_not_in_this_bucket:
         ti.xcom_push(key="years_not_in_this_bucket",
-                     value=years_not_in_this_bucket)
+                     value=list(years_not_in_this_bucket))
         ti.xcom_push(key="cluster_size",
                      value=calculate_cluster_size(len(years_not_in_this_bucket)))
         ti.xcom_push(key="years_not_in_this_bucket_str",
