@@ -159,7 +159,7 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
             op_kwargs={
                 "true_option": 'extract.create_gke_cluster',
                 "false_option": "extract.extraction_finished_wih_sucess",
-                "bucket": f"{PROJECT}-landing",
+                "bucket": LANDING_BUCKET,
                 "years": YEARS
             }
         )
