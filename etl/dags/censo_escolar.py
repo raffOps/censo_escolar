@@ -70,14 +70,14 @@ def check_year(**context):
         return false_option
 
 
-def calculate_cluster_size(ammount_years):
-    return ceil(ammount_years/2) + 1
+def calculate_cluster_size(amount_years):
+    return ceil(int(amount_years)/2) + 1
 
 
 def get_gke_cluster_def():
     cluster_def = {
         "name": "censo-escolar-extraction",
-        "initial_node_count": '{{ ti.xcom_pull(task_ids="check_landing_bucket", key="cluster_size")  }}',
+        "initial_node_count": '{{ ti.xcom_pull(task_ids="check_landing_bucket", key="cluster_size") }}',
         "location": "southamerica-east1-a",
         "node_config": {
             "oauth_scopes": ["https://www.googleapis.com/auth/cloud-platform"],
