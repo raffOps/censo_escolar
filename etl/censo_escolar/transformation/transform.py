@@ -166,6 +166,7 @@ def transform(file, bucket, year, region=None):
 
 
 def main(*args):
+    print(args)
     regions = ["co", "nordeste", "norte", "sudeste", "sul"]
     partitions = ["E_NU_ANO_CENSO", "E_CO_UF"]
 
