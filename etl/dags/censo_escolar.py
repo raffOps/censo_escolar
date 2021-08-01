@@ -127,8 +127,9 @@ def get_dataproc_workflow():
 
     prev_job = None
     jobs = []
-    years = "{{ ti.xcom_pull(task_ids='check_processing_bucket', key='years_not_in_this_bucket_str'}}"
-    for year_ in years.split():
+    #years = "{{ ti.xcom_pull(task_ids='check_processing_bucket', key='years_not_in_this_bucket_str'}}"
+    years = '{{ (ti.xcom_pull(task_ids="check_processing_bucket", key="years_not_in_this_bucket_str") | fromjson) }}'
+    for year_ in years:
         step_id = f"censo-transform-{year_}",
         job = {
             "sted_id": step_id,
@@ -149,7 +150,10 @@ def get_dataproc_workflow():
     return workflow
 
 
-with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=days_ago(0)) as dag:
+with DAG(dag_id="censo-escolar",
+         default_args={'owner': 'airflow'},
+         start_date=days_ago(0),
+         user_defined_filters={'fromjson': lambda s: json.loads(s)}) as dag:
     with TaskGroup(group_id="extract") as extract:
         check_landing_bucket = BranchPythonOperator(
             task_id="check_landing_bucket",
