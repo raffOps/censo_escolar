@@ -48,6 +48,8 @@ def check_years(**context):
     if years_not_in_this_bucket:
         ti.xcom_push(key="years_not_in_this_bucket",
                      value=json.dumps(list(years_not_in_this_bucket)))
+        ti.xcom_push(key="years_not_in_this_bucket_str",
+                     value=" ".join(map(str, years_not_in_this_bucket)))
         ti.xcom_push(key="cluster_size",
                      value=calculate_cluster_size(len(years_not_in_this_bucket)))
         return true_option
@@ -62,7 +64,7 @@ def check_year(**context):
     false_option = context["false_option"]
     years_not_in_this_bucket = ti.xcom_pull(task_ids=context["task"],
                                             key="years_not_in_this_bucket")
-    if year in years_not_in_this_bucket:
+    if year in json.loads(years_not_in_this_bucket):
         return true_option
     else:
         return false_option
@@ -83,6 +85,7 @@ def get_gke_cluster_def():
         },
     }
     return cluster_def
+
 
 def get_pod_resources():
     return V1ResourceRequirements(
@@ -124,8 +127,8 @@ def get_dataproc_workflow():
 
     prev_job = None
     jobs = []
-    years = json.loads("{{ ti.xcom_pull(task_ids='check_processing_bucket', key='years_not_in_this_bucket'}}")
-    for year_ in years:
+    years = "{{ ti.xcom_pull(task_ids='check_processing_bucket', key='years_not_in_this_bucket_str'}}"
+    for year_ in years.split():
         step_id = f"censo-transform-{year_}",
         job = {
             "sted_id": step_id,
