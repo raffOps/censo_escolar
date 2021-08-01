@@ -52,8 +52,8 @@ def check_years(**context):
                      value=list(years_not_in_this_bucket))
         ti.xcom_push(key="cluster_size",
                      value=calculate_cluster_size(len(years_not_in_this_bucket)))
-        ti.xcom_push(key="years_not_in_this_bucket_str",
-                     value=" ".join(years_not_in_this_bucket))
+        ti.xcom_push(key="dataproc_workflow",
+                     value=get_dataproc_workflow(years_not_in_this_bucket))
         return true_option
     else:
         return false_option
@@ -99,29 +99,7 @@ def get_gke_cluster_def():
     }
     return cluster_def
 
-def get_jobs():
-    prev_job = None
-    jobs = []
-    years = '{{ ti.xcom_pull(task_ids="transform.check_processing_bucket", key="years_not_in_this_bucket_str") }}'
-    for year_ in years.split(" "):
-        step_id = f"censo-transform-{year_}",
-        job = {
-            "sted_id": step_id,
-            "pyspark_job": {
-                "main_python_file_uri": f"gs://{SCRIPTS_BUCKET}/censo_escolar/transformation/transform.py",
-                "args": [PROJECT, year_]
-            }
-        }
-
-        if prev_job:
-            job["prerequisite_step_ids"] = prev_job
-
-        prev_job = step_id
-        jobs.append(job)
-
-    return jobs
-
-def get_dataproc_workflow():
+def get_dataproc_workflow(years):
     workflow = {
         "id": f"censo-escolar-transform-{NOW}",
         "name": "censo-transform",
@@ -143,8 +121,28 @@ def get_dataproc_workflow():
                 }
             },
         },
-        "jobs": get_jobs()
+        "jobs": []
     }
+
+    prev_job = None
+    jobs = []
+    for year_ in years:
+        step_id = f"censo-transform-{year_}",
+        job = {
+            "sted_id": step_id,
+            "pyspark_job": {
+                "main_python_file_uri": f"gs://{SCRIPTS_BUCKET}/censo_escolar/transformation/transform.py",
+                "args": [PROJECT, year_]
+            }
+        }
+
+        if prev_job:
+            job["prerequisite_step_ids"] = prev_job
+
+        prev_job = step_id
+        jobs.append(job)
+
+    workflow["jobs"] = jobs
 
     return workflow
 
@@ -238,7 +236,7 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
 
         create_workflow_template = DataprocCreateWorkflowTemplateOperator(
             task_id="create_workflow_template",
-            template=get_dataproc_workflow(),
+            template='{{ ti.xcom_pull(task_ids="transform.check_processing_bucket", key="dataproc_workflow" }}',
             project_id=PROJECT,
             location="us-east1",
         )
