@@ -9,7 +9,7 @@ from pyspark.sql.functions import (udf, col, expr)
 from google.cloud import storage
 
 spark = SparkSession.builder.appName("censo").getOrCreate()
-logging.basicConfig(format="%(asctime)s%(levelname)s: %(message)s",
+logging.basicConfig(format="%(asctime) %(levelname) %(message)",
                     level=logging.INFO)
 
 
