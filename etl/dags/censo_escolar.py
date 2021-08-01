@@ -233,7 +233,7 @@ with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=d
                 trigger_rule='none_failed'
             )
 
-        check_processing_bucket >> [transform, transformation_finished_with_sucess]
-        transform >> transformation_finished_with_sucess
+        check_processing_bucket >> [transform_year, transformation_finished_with_sucess]
+        transform_year >> transformation_finished_with_sucess
 
     extract >> transform
