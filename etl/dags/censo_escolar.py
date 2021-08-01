@@ -38,22 +38,6 @@ YEARS = list(map(str, range(FIRST_YEAR, LAST_YEAR + 1)))
 NOW = datetime.now().isoformat()
 
 
-def calculate_cluster_size(amount_years):
-    return ceil(amount_years/2) + 1
-
-def get_gke_cluster_def():
-    cluster_def = {
-        "name": "censo-escolar-extraction",
-        "initial_node_count": '{{ ti.xcom_pull(task_ids="extract.check_landing_bucket", key="cluster_size") }}',
-        "location": "southamerica-east1-a",
-        "node_config": {
-            "oauth_scopes": ["https://www.googleapis.com/auth/cloud-platform"],
-            "machine_type": "e2-standard-4"
-        },
-    }
-    return cluster_def
-
-
 def check_years(**context):
     ti = context["ti"]
     true_option = context["true_option"]
@@ -100,6 +84,21 @@ def get_pod_resources():
             "memory": "4G"
         }
     )
+
+def calculate_cluster_size(amount_years):
+    return ceil(amount_years/2) + 1
+
+def get_gke_cluster_def():
+    cluster_def = {
+        "name": "censo-escolar-extraction",
+        "initial_node_count": '{{ ti.xcom_pull(task_ids="extract.check_landing_bucket", key="cluster_size") }}',
+        "location": "southamerica-east1-a",
+        "node_config": {
+            "oauth_scopes": ["https://www.googleapis.com/auth/cloud-platform"],
+            "machine_type": "e2-standard-4"
+        },
+    }
+    return cluster_def
 
 
 def get_dataproc_workflow():
