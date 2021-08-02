@@ -127,7 +127,7 @@ def get_dataproc_workflow(years):
     for year_ in years:
         step_id = f"censo-transform-{year_}",
         job = {
-            "sted_id": step_id,
+            "step_id": step_id,
             "pyspark_job": {
                 "main_python_file_uri": f"gs://{SCRIPTS_BUCKET}/censo_escolar/transformation/transform.py",
                 "args": [PROJECT, year_]
