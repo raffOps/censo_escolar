@@ -100,7 +100,7 @@ def get_gke_cluster_def():
 def get_dataproc_workflow(years):
     workflow = {
         "id": f"censo-escolar-transform-{NOW}",
-        "name": "censo-transform",
+        "name": f"projects/{PROJECT}/regions/us-east1/workflowTemplates/censo-transform",
         "placement": {
             "managed_cluster": {
                 "cluster_name": "censo-escolar-transform",
