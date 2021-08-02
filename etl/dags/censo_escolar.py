@@ -49,8 +49,6 @@ def check_years(**context):
                      value=list(years_not_in_this_bucket))
         ti.xcom_push(key="cluster_size",
                      value=calculate_cluster_size(len(years_not_in_this_bucket)))
-        ti.xcom_push(key="dataproc_workflow",
-                     value=get_dataproc_workflow(years_not_in_this_bucket))
         return true_option
     else:
         return false_option
@@ -81,8 +79,10 @@ def get_pod_resources():
         }
     )
 
+
 def calculate_cluster_size(amount_years):
     return ceil(amount_years/2) + 1
+
 
 def get_gke_cluster_def():
     cluster_def = {
@@ -95,6 +95,7 @@ def get_gke_cluster_def():
         },
     }
     return cluster_def
+
 
 def get_dataproc_workflow(years):
     workflow = {
@@ -142,6 +143,19 @@ def get_dataproc_workflow(years):
     workflow["jobs"] = jobs
 
     return workflow
+
+def create_dataproc_workflow_substask(**context):
+    ti = context["ti"]
+    years_not_int_processing_bucket = ti.xcom_pull(task_ids="transform.check_processing_bucket",
+                                                    key="years_not_in_this_bucket")
+    workflow = get_dataproc_workflow(years_not_int_processing_bucket)
+    create_workflow_template_substask_op = DataprocCreateWorkflowTemplateOperator(
+        task_id="create_workflow_template_subtask",
+        template=workflow,
+        project_id=PROJECT,
+        location="us-east1",
+    )
+    create_workflow_template_substask_op.execute()
 
 
 with DAG(dag_id="censo-escolar",
@@ -235,15 +249,13 @@ with DAG(dag_id="censo-escolar",
             trigger_rule="none_failed"
         )
 
-        create_workflow_template = DataprocCreateWorkflowTemplateOperator(
+        create_workflow_template = PythonOperator(
             task_id="create_workflow_template",
-            template=list('{{ ti.xcom_pull(task_ids="transform.check_processing_bucket", key="dataproc_workflow") }}')[0],
-            project_id=PROJECT,
-            location="us-east1",
+            python_callable=create_dataproc_workflow_substask
         )
 
         run_dataproc_job = DataprocInstantiateWorkflowTemplateOperator(
-            task_id=f"run_dataproc_job",
+            task_id="run_dataproc_job",
             template_id=f"censo-escolar-transform-{NOW}",
             project_id=PROJECT,
             region="us-west1"
