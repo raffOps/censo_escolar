@@ -2,7 +2,6 @@ from datetime import datetime
 import json
 import re
 from math import ceil
-import uuid
 
 from airflow import DAG
 from airflow.utils.dates import days_ago
@@ -32,7 +31,6 @@ CONSUMER_BUCKET = f"{PROJECT}-consumer"
 SCRIPTS_BUCKET = f"{PROJECT}-scripts"
 YEARS = list(map(str, range(FIRST_YEAR, LAST_YEAR + 1)))
 
-DATAPROC_WORKFLOW_ID = str(uuid.uuid4())[:10]
 
 def check_years(**context):
     ti = context["ti"]
@@ -98,8 +96,10 @@ def get_gke_cluster_def():
 
 
 def get_dataproc_workflow(years):
+    NOW = str(datetime.now().timestamp()).replace(".", "")
+    dataproc_workflow_id = f"censo-escolar-transform-{NOW}"
     workflow = {
-        "id": f"censo-transform-{DATAPROC_WORKFLOW_ID}",
+        "id": dataproc_workflow_id,
         "name": f"projects/{PROJECT}/regions/us-east1/workflowTemplates/censo-transform",
         "placement": {
             "managed_cluster": {
@@ -149,7 +149,7 @@ def create_dataproc_workflow_substask(**context):
     years_not_int_processing_bucket = ti.xcom_pull(task_ids="transform.check_processing_bucket",
                                                     key="years_not_in_this_bucket")
     workflow = get_dataproc_workflow(years_not_int_processing_bucket)
-    ti.xcom_push("teste", workflow["id"])
+    ti.xcom_push("dataproc_workflow_id", workflow["id"])
     create_workflow_template_substask_op = DataprocCreateWorkflowTemplateOperator(
         task_id="create_workflow_template_subtask",
         template=workflow,
@@ -258,7 +258,7 @@ with DAG(dag_id="censo-escolar",
 
         run_dataproc_job = DataprocInstantiateWorkflowTemplateOperator(
             task_id="run_dataproc_job",
-            template_id=f"censo-transform-{DATAPROC_WORKFLOW_ID}",
+            template_id='{{ ti.xcom_pull(task_ids="create_workflow_template", key="dataproc_workflow_id") }}',
             project_id=PROJECT,
             region="us-east1"
         )
