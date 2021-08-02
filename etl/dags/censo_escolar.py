@@ -124,7 +124,6 @@ def get_dataproc_workflow(years):
 
     prev_job_id = None
     jobs = []
-    print(years)
     for year_ in years:
         step_id = f"censo-transform-{year_}"
         job = {
@@ -136,8 +135,7 @@ def get_dataproc_workflow(years):
         }
 
         if prev_job_id:
-            print(step_id)
-            job["prerequisite_step_ids"] = [step_id]
+            job["prerequisite_step_ids"] = [prev_job_id]
 
         prev_job_id = step_id
         jobs.append(job)
