@@ -32,6 +32,7 @@ SCRIPTS_BUCKET = f"{PROJECT}-scripts"
 YEARS = list(map(str, range(FIRST_YEAR, LAST_YEAR + 1)))
 
 NOW = str(datetime.now().timestamp()).replace(".","")
+DATAPROC_WORKFLOW_ID = f"censo-escolar-transform-{NOW}"
 
 
 def check_years(**context):
@@ -99,7 +100,7 @@ def get_gke_cluster_def():
 
 def get_dataproc_workflow(years):
     workflow = {
-        "id": f"censo-escolar-transform-{NOW}",
+        "id": DATAPROC_WORKFLOW_ID,
         "name": f"projects/{PROJECT}/regions/us-east1/workflowTemplates/censo-transform",
         "placement": {
             "managed_cluster": {
@@ -258,7 +259,7 @@ with DAG(dag_id="censo-escolar",
 
         run_dataproc_job = DataprocInstantiateWorkflowTemplateOperator(
             task_id="run_dataproc_job",
-            template_id=f"censo-escolar-transform-{NOW}",
+            template_id=DATAPROC_WORKFLOW_ID,
             project_id=PROJECT,
             region="us-east1"
         )
