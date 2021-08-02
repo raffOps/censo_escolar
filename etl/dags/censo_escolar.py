@@ -251,7 +251,8 @@ with DAG(dag_id="censo-escolar",
 
         create_workflow_template = PythonOperator(
             task_id="create_workflow_template",
-            python_callable=create_dataproc_workflow_substask
+            python_callable=create_dataproc_workflow_substask,
+            provide_context=True
         )
 
         run_dataproc_job = DataprocInstantiateWorkflowTemplateOperator(
