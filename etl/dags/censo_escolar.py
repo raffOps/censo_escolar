@@ -31,7 +31,7 @@ CONSUMER_BUCKET = f"{PROJECT}-consumer"
 SCRIPTS_BUCKET = f"{PROJECT}-scripts"
 YEARS = list(map(str, range(FIRST_YEAR, LAST_YEAR + 1)))
 
-NOW = datetime.now().isoformat()
+NOW = str(datetime.today()).replace(" ", "")
 
 
 def check_years(**context):
@@ -122,7 +122,7 @@ def get_dataproc_workflow(years):
         "jobs": []
     }
 
-    prev_job = None
+    prev_job_id = None
     jobs = []
     for year_ in years:
         step_id = f"censo-transform-{year_}"
@@ -134,10 +134,10 @@ def get_dataproc_workflow(years):
             }
         }
 
-        if prev_job:
-            job["prerequisite_step_ids"] = prev_job
+        if prev_job_id:
+            job["prerequisite_step_ids"] = prev_job_id
 
-        prev_job = step_id
+        prev_job_id = step_id
         jobs.append(job)
 
     workflow["jobs"] = jobs
