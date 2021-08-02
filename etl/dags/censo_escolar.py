@@ -260,7 +260,7 @@ with DAG(dag_id="censo-escolar",
             task_id="run_dataproc_job",
             template_id=f"censo-escolar-transform-{NOW}",
             project_id=PROJECT,
-            region="us-west1"
+            region="us-east1"
         )
 
         transformation_finished_with_sucess = DummyOperator(
