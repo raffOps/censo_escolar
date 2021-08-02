@@ -31,7 +31,7 @@ CONSUMER_BUCKET = f"{PROJECT}-consumer"
 SCRIPTS_BUCKET = f"{PROJECT}-scripts"
 YEARS = list(map(str, range(FIRST_YEAR, LAST_YEAR + 1)))
 
-NOW = str(datetime.today()).replace(" ", "")
+NOW = str(datetime.now().timestamp()).replace(".","")
 
 
 def check_years(**context):
