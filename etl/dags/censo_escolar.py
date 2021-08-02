@@ -96,8 +96,8 @@ def get_gke_cluster_def():
 
 
 def get_dataproc_workflow(years):
-    NOW = str(datetime.now().timestamp()).replace(".", "")
-    dataproc_workflow_id = f"censo-escolar-transform-{NOW}"
+    now = str(datetime.now().timestamp()).replace(".", "")
+    dataproc_workflow_id = f"censo-escolar-transform-{now}"
     workflow = {
         "id": dataproc_workflow_id,
         "name": f"projects/{PROJECT}/regions/us-east1/workflowTemplates/censo-transform",
@@ -258,7 +258,7 @@ with DAG(dag_id="censo-escolar",
 
         run_dataproc_job = DataprocInstantiateWorkflowTemplateOperator(
             task_id="run_dataproc_job",
-            template_id='{{ ti.xcom_pull(task_ids="create_workflow_template", key="dataproc_workflow_id") }}',
+            template_id='{{ ti.xcom_pull(task_ids="transform.create_workflow_template", key="dataproc_workflow_id") }}',
             project_id=PROJECT,
             region="us-east1"
         )
