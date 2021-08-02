@@ -125,7 +125,7 @@ def get_dataproc_workflow(years):
     prev_job = None
     jobs = []
     for year_ in years:
-        step_id = f"censo-transform-{year_}",
+        step_id = f"censo-transform-{year_}"
         job = {
             "step_id": step_id,
             "pyspark_job": {
