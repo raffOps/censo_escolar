@@ -137,7 +137,7 @@ def get_dataproc_workflow(years):
 
         if prev_job_id:
             print(step_id)
-            job["prerequisite_step_ids"] = step_id
+            job["prerequisite_step_ids"] = [step_id]
 
         prev_job_id = step_id
         jobs.append(job)
