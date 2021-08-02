@@ -151,6 +151,7 @@ def create_dataproc_workflow_substask(**context):
     years_not_int_processing_bucket = ti.xcom_pull(task_ids="transform.check_processing_bucket",
                                                     key="years_not_in_this_bucket")
     workflow = get_dataproc_workflow(years_not_int_processing_bucket)
+    ti.xcom_push("teste", workflow)
     create_workflow_template_substask_op = DataprocCreateWorkflowTemplateOperator(
         task_id="create_workflow_template_subtask",
         template=workflow,
