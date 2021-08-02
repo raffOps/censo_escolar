@@ -155,7 +155,7 @@ def create_dataproc_workflow_substask(**context):
         project_id=PROJECT,
         location="us-east1",
     )
-    create_workflow_template_substask_op.execute()
+    create_workflow_template_substask_op.execute(context)
 
 
 with DAG(dag_id="censo-escolar",
