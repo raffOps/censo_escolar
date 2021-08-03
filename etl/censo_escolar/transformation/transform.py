@@ -188,8 +188,6 @@ def main(project="rjr-dados-abertos", year="2020"):
         censo = censo.join(gestores, censo.E_CO_ENTIDADE == gestores.G_CO_ENTIDADE)
         censo = censo.join(docentes, censo.T_ID_TURMA == docentes.D_ID_TURMA)
         censo = censo.join(matriculas, censo.T_ID_TURMA == matriculas.M_ID_TURMA)
-        for a in [escolas, turmas, gestores, docentes, matriculas]:
-            print((a.count(), len(a.columns)))
 
         del(docentes)
         del(matriculas)

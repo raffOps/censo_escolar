@@ -1,4 +1,5 @@
 init:
+	bash -c "cd infra && bash enable_api.sh"
 	bash -c "cd infra && terraform init"
 
 apply:
