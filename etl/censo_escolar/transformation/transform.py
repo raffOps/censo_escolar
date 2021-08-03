@@ -169,7 +169,7 @@ def transform(file, bucket, year, region=None):
 
 def main(project="rjr-dados-abertos", year="2020"):
     regions = ["co", "nordeste", "norte", "sudeste", "sul"]
-    partitions = ["E_NU_ANO_CENSO"]
+    partitions = ["E_NU_ANO_CENSO", "E_CO_UF"]
 
     escolas = transform("escolas", project, year)
     escolas = add_prefix_in_columns(escolas, "E")
