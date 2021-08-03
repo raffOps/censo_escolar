@@ -1,4 +1,4 @@
-# ETL censo escolar
+# ETL Censo Escolar
 
 Esse projeto implementa um pipeline de ETL para os dados do [Censo Escolar](https://www.gov.br/inep/pt-br/areas-de-atuacao/pesquisas-estatisticas-e-indicadores/censo-escolar)
 utilizando Google Cloud Plataform. 
@@ -15,15 +15,16 @@ O deploy é realizado com poucos comandos no Google Cloud Shell, precisando faze
 
 ## Dados 
 #### [Download](https://www.gov.br/inep/pt-br/acesso-a-informacao/dados-abertos/microdados/censo-escolar)
-Para esse projeto foram coletados os dados de 2011 até 2020. Os dados se dividem em 12 arquivos .CSVs: 
+Para esse projeto foram coletados os dados de 2011 até 2020. Em cada ano são 12 arquivos .CSVs: 
 5 para matriculas (1 por região do BR),
-5 para docentes (1 por região do BR), e 1 arquivo cada para turmas e escolas. 
+5 para docentes (1 por região do BR), e 1 arquivo de turmas e escolas.
 Em 2019 e 2020 também existe um arquivo para gestores.
 
 ## Deploy
 
 1. Faça um fork desse projeto para a sua conta Github.
-2. Crie um [projeto](https://console.cloud.google.com/cloud-resource-manager) GCP novo. Nomeie levando em conta um nome que também será utilizado também pelo GCS bucket onde será armezanado o data lake do projeto.
+2. Crie um [projeto](https://console.cloud.google.com/cloud-resource-manager) GCP novo. O nome do projeto será 
+utilizado com prefixo dos buckets onde serão armezanados os dados.
 3. Acesse [Google Cloud Build](https://console.cloud.google.com/cloud-build/triggers) e crie uma conexão com seu repositório Github.
 4. Entre no Google Cloud Shell. O ícone dele está na parte superior do console, próximo a foto da sua conta Google. 
    No aba do Cloud Shell clique no botão ```Abrir editor``` para abrir o Visual Studio Code.

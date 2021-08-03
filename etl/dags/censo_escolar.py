@@ -29,10 +29,10 @@ LANDING_BUCKET = f"{PROJECT}-landing"
 PROCESSING_BUCKET = f"{PROJECT}-processing"
 CONSUMER_BUCKET = f"{PROJECT}-consumer"
 SCRIPTS_BUCKET = f"{PROJECT}-scripts"
-YEARS = list(map(str, range(FIRST_YEAR, LAST_YEAR + 1)))
+YEARS_TO_ETL = list(map(str, range(FIRST_YEAR, LAST_YEAR + 1)))
 
 
-def check_years(**context):
+def all_these_years_already_in_bucket(**context):
     ti = context["ti"]
     true_option = context["true_option"]
     false_option = context["false_option"]
@@ -167,13 +167,13 @@ with DAG(dag_id="censo-escolar",
     with TaskGroup(group_id="extract") as extract:
         check_landing_bucket = BranchPythonOperator(
             task_id="check_landing_bucket",
-            python_callable=check_years,
+            python_callable=all_these_years_already_in_bucket,
             provide_context=True,
             op_kwargs={
                 "true_option": 'extract.create_gke_cluster',
                 "false_option": "extract.extraction_finished_wih_sucess",
                 "bucket": LANDING_BUCKET,
-                "years": YEARS
+                "years": YEARS_TO_ETL
             }
         )
 
@@ -185,7 +185,7 @@ with DAG(dag_id="censo-escolar",
         )
 
         with TaskGroup(group_id="download") as download:
-            for year in YEARS:
+            for year in YEARS_TO_ETL:
                 check_before_download = BranchPythonOperator(
                     task_id=f"check_before_download_year_{year}",
                     python_callable=check_year,
@@ -239,13 +239,13 @@ with DAG(dag_id="censo-escolar",
     with TaskGroup(group_id="transform") as transform:
         check_processing_bucket = BranchPythonOperator(
             task_id="check_processing_bucket",
-            python_callable=check_years,
+            python_callable=all_these_years_already_in_bucket,
             provide_context=True,
             op_kwargs={
                 "true_option": "transform.create_workflow_template",
                 "false_option": "transform.transformation_finished_with_sucess",
                 "bucket": PROCESSING_BUCKET,
-                "years": YEARS
+                "years": YEARS_TO_ETL
             },
             trigger_rule="none_failed"
         )

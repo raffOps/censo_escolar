@@ -11,7 +11,7 @@ from google.cloud import storage
 spark = SparkSession.builder.appName("censo").getOrCreate()
 logging.basicConfig(format="%(asctime)s %(levelname)s %(message)s",
                     level=logging.INFO,
-                    datefmt="%y-%m-%d %H:%M:%S")
+                    datefmt="%y/%m/%d %H:%M:%S")
 
 
 def add_prefix_in_columns(df, prefix):
