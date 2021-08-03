@@ -1,5 +1,5 @@
 variable "project" {
-  default = "rjr-portal-da-transparencia"
+  default = "rjr-dados-abertos"
 }
 
 variable "git_user" {

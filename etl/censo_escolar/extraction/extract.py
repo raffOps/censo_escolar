@@ -9,21 +9,18 @@ import subprocess
 import requests
 from google.cloud import storage
 
-if os.getenv("DATA_LAKE"):
-    DATA_LAKE = os.getenv("DATA_LAKE")
-else:
-    DATA_LAKE = "rjr-teste"
-
 CREDENTIALS = "./key.json"
 
 
 def get_url(year):
-    if year == "2020":
+    if year == 2020:
         url = "https://download.inep.gov.br/dados_abertos/microdados_censo_escolar_2020.zip"
-    elif year in "2019 2018":
+    elif year in [2019, 2018]:
         url = f"https://download.inep.gov.br/microdados/microdados_educacao_basica_{year}.zip"
-    else:
+    elif year in range(2011, 2018):
         url = f"https://download.inep.gov.br/microdados/micro_censo_escolar_{year}.zip"
+    else:
+        raise Exception(f"Year {year} not mapped")
 
     return url
 
@@ -75,24 +72,25 @@ def unzip_file(year):
     print("Unzip complete")
 
 
-def upload_files(year):
+def upload_files(year, bucket):
     print("Uploading files")
     client = storage.Client.from_service_account_json(json_credentials_path=CREDENTIALS)
-    bucket = client.get_bucket(DATA_LAKE)
+    bucket = client.get_bucket(bucket)
     for file in glob(f"*{year}/DADOS/*.CSV"):
-        print(file)
         csv_name = (re.search("DADOS\/(.*)\.", file).group(1) + ".csv").lower()
-        blob = bucket.blob(f"landing_zone/censo-escolar/{year}/{csv_name}")
+        print(f"Uploading: gs://{bucket}/censo-escolar/{year}/{csv_name}")
+        blob = bucket.blob(f"censo-escolar/{year}/{csv_name}")
         blob.upload_from_filename(file)
 
     print("Upload complete")
 
 
 if __name__ == "__main__":
-    year = sys.argv[1]
+    year = int(sys.argv[1])
+    bucket = sys.argv[2]
 
     download_file(year)
     unzip_file(year)
-    upload_files(year)
+    upload_files(year, bucket)
 
 
