@@ -1,4 +1,6 @@
-# ETL Censo Escolar
+# ETL Censo Escolar 
+
+![censo](img/censo.png)
 
 Esse projeto implementa um pipeline de ETL para os dados do [Censo Escolar](https://www.gov.br/inep/pt-br/areas-de-atuacao/pesquisas-estatisticas-e-indicadores/censo-escolar)
 utilizando Google Cloud Plataform. 

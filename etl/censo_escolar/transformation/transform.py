@@ -2,21 +2,18 @@ import json
 import sys
 from datetime import datetime
 import logging
+from functools import reduce
 
 from pyspark.sql import SparkSession
 from pyspark.sql.types import *
-from pyspark.sql.functions import (udf, col, expr)
+from pyspark.sql.functions import (udf, col)
+from pyspark.sql import DataFrame
 from google.cloud import storage
 
 spark = SparkSession.builder.appName("censo").getOrCreate()
 logging.basicConfig(format="%(asctime)s %(levelname)s %(message)s",
                     level=logging.INFO,
                     datefmt="%y/%m/%d %H:%M:%S")
-
-
-def add_prefix_in_columns(df, prefix):
-    return df.select([col(column).alias(f"{prefix}_{column}")
-                      for column in df.columns])
 
 
 def load_json(name, bucket_prefix):
@@ -47,8 +44,6 @@ def string_to_date(df, column, year):
 def load_csv(file, bucket_prefix, year, region=None):
     schema = load_json(f"schemas/{file}_schema", bucket_prefix)
     schema = StructType.fromJson(schema)
-    #     except:
-    #         schema = StructType.fromJson(json.loads(schema))
 
     if file == "gestor" and int(year) < 2019:
         df = spark.createDataFrame(data=[], schema=schema)
@@ -108,58 +103,8 @@ def transform_date_columns(df, file, year):
     return df
 
 
-def drop_columns(df, file):
-    drops = []
-    if file in ["turmas", "matricula", "gestor", "docentes"]:
-        drops.extend(["NU_ANO_CENSO",
-                      'TP_REGULAMENTACAO',
-                      'CO_UF',
-                      'IN_MANT_ESCOLA_PRIVADA_ONG',
-                      'NU_ANO_CENSO',
-                      'CO_MUNICIPIO',
-                      'IN_CONVENIADA_PP',
-                      'IN_ESPECIAL_EXCLUSIVA',
-                      'TP_CATEGORIA_ESCOLA_PRIVADA',
-                      'IN_MANT_ESCOLA_PRIVADA_OSCIP',
-                      'IN_MANT_ESCOLA_PRIV_ONG_OSCIP',
-                      'IN_MANT_ESCOLA_PRIVADA_S_FINS',
-                      'IN_MANT_ESCOLA_PRIVADA_SIST_S',
-                      'CO_DISTRITO',
-                      'IN_EDUCACAO_INDIGENA',
-                      'CO_MICRORREGIAO',
-                      'TP_DEPENDENCIA',
-                      'IN_EJA',
-                      'IN_REGULAR',
-                      'IN_PROFISSIONALIZANTE',
-                      'TP_LOCALIZACAO_DIFERENCIADA',
-                      'TP_CONVENIO_PODER_PUBLICO',
-                      'TP_LOCALIZACAO',
-                      'CO_REGIAO',
-                      'CO_MESORREGIAO',
-                      'IN_MANT_ESCOLA_PRIVADA_EMP',
-                      'IN_MANT_ESCOLA_PRIVADA_SIND',
-                      ]
-                     )
-    if file in ["matricula", "docentes"]:
-        drops.extend(["CO_ENTIDADE"])
-
-    if file == 'matricula':
-        drops.extend(['NU_DIAS_ATIVIDADE',
-                      'NU_DURACAO_TURMA'])
-
-    if file != "turmas":
-        drops.extend(["TP_MEDIACAO_DIDATICO_PEDAGO",
-                      "TP_TIPO_ATENDIMENTO_TURMA",
-                      "TP_TIPO_LOCAL_TURMA"])
-
-    df = df.drop(*drops)
-
-    return df
-
-
 def transform(file, bucket, year, region=None):
     df = load_csv(file, bucket, year, region)
-    df = drop_columns(df, file)
     df = transform_string_columns(df, bucket)
     df = transform_boolean_columns(df)
     df = transform_integer_columns(df)
@@ -167,35 +112,65 @@ def transform(file, bucket, year, region=None):
     return df
 
 
+def union(dfs):
+    return reduce(DataFrame.unionAll, dfs)
+
+
+def repartition(df, file):
+    nrows = df.count()
+    if file in ["matriculas", "docentes"]:
+        num_partitions = nrows / 2_000_000
+    else:
+        num_partitions = 1
+
+    return df.repartition(int(num_partitions))
+
+
+def save(df, name, partitions, project):
+    df.write.partitionBy(partitions).parquet(f"gs://{project}-processing/censo-escolar/{name}",
+                                             compression="snappy")
+
+
 def main(project="rjr-dados-abertos", year="2020"):
     regions = ["co", "nordeste", "norte", "sudeste", "sul"]
-    partitions = ["E_NU_ANO_CENSO", "E_CO_UF"]
+    partitions = ["NU_ANO_CENSO"]
 
+    logging.info(f"{year} - escolas...")
     escolas = transform("escolas", project, year)
-    escolas = add_prefix_in_columns(escolas, "E")
+    escolas = repartition(escolas, "escolas")
+    save(escolas, "escolas", partitions, project)
+    del(escolas)
+
+    logging.info(f"{year} - turmas...")
     turmas = transform("turmas", project, year)
-    turmas = add_prefix_in_columns(turmas, "T")
-    gestores = transform("gestor", project, year)
-    gestores = add_prefix_in_columns(gestores, "G")
+    turmas = repartition(turmas, "turmas")
+    save(turmas, "turmas", partitions, project)
+    del(turmas)
+
+    if int(year) > 2018:
+        logging.info(f"{year} - gestores...")
+        gestores = transform("gestor", project, year)
+        gestores = repartition(gestores, "gestores")
+        save(gestores, "gestores", partitions, project)
+        del(gestores)
+
+    logging.info(f"{year} - docentes...")
+    docentes = []
     for region in regions:
-        logging.info(f"{year} - {region}: transforming")
-        docentes = transform("docentes", project, year, region)
-        docentes = add_prefix_in_columns(docentes, "D")
-        matriculas = transform("matricula", project, year, region)
-        matriculas = add_prefix_in_columns(matriculas, "M")
+        docentes.append(transform("docentes", project, year, region))
+    docentes = union(docentes)
+    docentes = repartition(docentes, "docentes")
+    save(docentes, "docentes", partitions, project)
+    del(docentes)
 
-        censo = escolas.join(turmas, escolas.E_CO_ENTIDADE == turmas.T_CO_ENTIDADE)
-        censo = censo.join(gestores, censo.E_CO_ENTIDADE == gestores.G_CO_ENTIDADE)
-        censo = censo.join(docentes, censo.T_ID_TURMA == docentes.D_ID_TURMA)
-        censo = censo.join(matriculas, censo.T_ID_TURMA == matriculas.M_ID_TURMA)
-
-        del(docentes)
-        del(matriculas)
-        censo = censo.drop("T_CO_ENTIDADE", "D_ID_TURMA", "M_ID_TURMA", "G_CO_ENTIDADE")
-        logging.info(f"{year} - {region}: saving")
-        censo.write.partitionBy(partitions).parquet(f"gs://{project}-processing/censo_escolar",
-                                                    compression="snappy",
-                                                    mode="append")
+    logging.info(f"{year} - matriculas...")
+    matriculas = []
+    for region in regions:
+        matriculas.append(transform("matricula", project, year, region))
+    matriculas = union(matriculas)
+    matriculas = repartition(matriculas, "matriculas")
+    save(matriculas, "matriculas", partitions, project)
+    del(matriculas)
 
 
 if __name__ == "__main__":
