@@ -34,9 +34,9 @@ def string_to_date(df, column, year):
         pattern = '%d/%m/%Y'
     else:
         pattern = "%d%b%Y:%H:%M:%S"
-    map_func = udf(lambda date: datetime.strptime(date, pattern)
-    if type(date) == str
-    else None, DateType())
+    map_func = udf(lambda date: datetime.strptime(date, pattern) if type(date) == str
+                                                                else None,
+                                DateType())
     df = df.withColumn(column, map_func(col(column)))
     return df
 
