@@ -15,7 +15,7 @@ resource "google_project_iam_member" "members" {
 
 resource "null_resource" "download_credential" {
   provisioner "local-exec" {
-    command = "gcloud iam service-accounts keys create ../etl/censo_escolar/extraction/key.json --iam-account=etl-service-account@${var.project}.iam.gserviceaccount.com"
+    command = "gcloud iam service-accounts keys create ../etl/censo_escolar/extract/key.json --iam-account=etl-service-account@${var.project}.iam.gserviceaccount.com"
     interpreter = ["/bin/bash", "-c"]
   }
   depends_on = [google_project_iam_member.members]
