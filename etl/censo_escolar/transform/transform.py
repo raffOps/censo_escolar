@@ -25,7 +25,7 @@ def add_prefix_in_columns(df, prefix):
 
 def load_json(name, bucket_prefix):
     bucket = storage.Client().get_bucket(f"{bucket_prefix}-scripts")
-    blob = bucket.blob(f'censo_escolar/transformation/{name}.json')
+    blob = bucket.blob(f'censo_escolar/transform/{name}.json')
     maps = json.loads(blob.download_as_string())
     return maps
 
@@ -182,8 +182,6 @@ def main(project="rjr-dados-abertos", year="2020"):
     matriculas = union(matriculas)
     matriculas = get_partition_balanced(matriculas, partitions)
     save(matriculas, "matriculas", partitions, project)
-
-    return matriculas
 
 
 if __name__ == "__main__":
