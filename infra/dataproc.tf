@@ -82,7 +82,7 @@
 //  jobs {
 //    step_id = "pyspark"
 //    pyspark_job {
-//      main_python_file_uri = "gs://${google_storage_bucket.scripts.name}/censo_escolar/transformation/transform.py"
+//      main_python_file_uri = "gs://${google_storage_bucket.scripts.name}/censo_escolar/transform/transform.py"
 //      args = ["project", "year"]
 //    }
 //  }

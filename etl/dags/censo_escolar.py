@@ -18,6 +18,11 @@ from airflow.providers.google.cloud.operators.dataproc import (
     DataprocInstantiateWorkflowTemplateOperator,
     DataprocCreateWorkflowTemplateOperator
 )
+
+from airflow.providers.google.cloud.operators.bigquery import (
+    BigQueryCreateEmptyDatasetOperator,
+    BigQueryInsertJobOperator
+)
 from kubernetes.client import V1ResourceRequirements
 from google.cloud import storage
 
@@ -84,7 +89,7 @@ def calculate_cluster_size(amount_years):
 
 def get_gke_cluster_def():
     cluster_def = {
-        "name": "censo-escolar-extraction",
+        "name": "censo-escolar-extract",
         "initial_node_count": '{{ ti.xcom_pull(task_ids="extract.check_landing_bucket", key="cluster_size") }}',
         "location": "southamerica-east1-a",
         "node_config": {
@@ -129,7 +134,7 @@ def get_dataproc_workflow(years):
         job = {
             "step_id": step_id,
             "pyspark_job": {
-                "main_python_file_uri": f"gs://{SCRIPTS_BUCKET}/censo_escolar/transformation/transform.py",
+                "main_python_file_uri": f"gs://{SCRIPTS_BUCKET}/censo_escolar/transform/transform.py",
                 "args": [PROJECT, year_]
             }
         }
@@ -143,6 +148,7 @@ def get_dataproc_workflow(years):
     workflow["jobs"] = jobs
 
     return workflow
+
 
 def create_dataproc_workflow_substask(**context):
     ti = context["ti"]
@@ -202,7 +208,7 @@ with DAG(dag_id="censo-escolar",
                     task_id=f"download_year_{year}",
                     project_id=PROJECT,
                     location="southamerica-east1-a",
-                    cluster_name="censo-escolar-extraction",
+                    cluster_name="censo-escolar-extract",
                     namespace="default",
                     image=f"gcr.io/{PROJECT}/censo_escolar_extraction:latest",
                     arguments=["sh", "-c", f'python extract.py {year} {LANDING_BUCKET}'],
@@ -222,7 +228,7 @@ with DAG(dag_id="censo-escolar",
 
         destroy_gke_cluster = GKEDeleteClusterOperator(
             task_id="destroy_gke_cluster",
-            name="censo-escolar-extraction",
+            name="censo-escolar-extract",
             project_id=PROJECT,
             location="southamerica-east1-a",
             trigger_rule="all_done"
@@ -270,5 +276,25 @@ with DAG(dag_id="censo-escolar",
 
         check_processing_bucket >> [create_workflow_template, transformation_finished_with_sucess]
         create_workflow_template >> run_dataproc_job >> transformation_finished_with_sucess
+
+    # with TaskGroup(group_id="load") as load:
+    #     create_dataset_if_not_exist = BigQueryCreateEmptyDatasetOperator(
+    #         task_id="create_dataset_if_not_exist",
+    #         project_id=PROJECT,
+    #         dataset_id="dados-abertos",
+    #         location="us",
+    #         exists_ok=True
+    #     )
+    #
+    #     insert_query_job = BigQueryInsertJobOperator(
+    #         task_id="insert_query_job",
+    #         configuration={
+    #             "query": {
+    #                 "query": INSERT_ROWS_QUERY,
+    #                 "useLegacySql": False,
+    #             }
+    #         },
+    #         location=location,
+    #     )
 
     extract >> transform

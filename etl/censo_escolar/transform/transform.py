@@ -2,18 +2,25 @@ import json
 import sys
 from datetime import datetime
 import logging
-from functools import reduce
 
 from pyspark.sql import SparkSession
 from pyspark.sql.types import *
-from pyspark.sql.functions import (udf, col)
+from pyspark.sql.functions import (udf, col, spark_partition_id)
+from functools import reduce
 from pyspark.sql import DataFrame
+from pyspark.sql.functions import rand
+
 from google.cloud import storage
 
 spark = SparkSession.builder.appName("censo").getOrCreate()
 logging.basicConfig(format="%(asctime)s %(levelname)s %(message)s",
                     level=logging.INFO,
                     datefmt="%y/%m/%d %H:%M:%S")
+
+
+def add_prefix_in_columns(df, prefix):
+    return df.select([col(column).alias(f"{prefix}_{column}")
+                      for column in df.columns])
 
 
 def load_json(name, bucket_prefix):
@@ -34,9 +41,9 @@ def string_to_date(df, column, year):
         pattern = '%d/%m/%Y'
     else:
         pattern = "%d%b%Y:%H:%M:%S"
-    map_func = udf(lambda date: datetime.strptime(date, pattern) if type(date) == str
-                                                                else None,
-                                DateType())
+    map_func = udf(lambda date: datetime.strptime(date, pattern)
+    if type(date) == str
+    else None, DateType())
     df = df.withColumn(column, map_func(col(column)))
     return df
 
@@ -116,63 +123,68 @@ def union(dfs):
     return reduce(DataFrame.unionAll, dfs)
 
 
-def repartition(df, file):
-    nrows = df.count()
-    if file in ["matriculas", "docentes"]:
-        num_partitions = nrows / 2_000_000
-    else:
-        num_partitions = 1
-
-    return df.repartition(int(num_partitions))
+def get_partition_balanced(df, partition_by_columns, desired_rows_per_output_file=1_500_000):
+    partition_count = df.groupBy(partition_by_columns).count()
+    partition_balanced_data = (
+        df
+            .join(partition_count, on=partition_by_columns)
+            .withColumn(
+            'repartition_seed',
+            (
+                    rand() * partition_count['count'] / desired_rows_per_output_file
+            ).cast('int')
+        )
+            .repartition(*partition_by_columns, 'repartition_seed')
+    )
+    return partition_balanced_data
 
 
 def save(df, name, partitions, project):
     df.write.partitionBy(partitions).parquet(f"gs://{project}-processing/censo-escolar/{name}",
-                                             compression="snappy")
+                                             compression="snappy",
+                                             mode="append")
 
 
 def main(project="rjr-dados-abertos", year="2020"):
     regions = ["co", "nordeste", "norte", "sudeste", "sul"]
-    partitions = ["NU_ANO_CENSO"]
 
+    partitions = ["NU_ANO_CENSO"]
     logging.info(f"{year} - escolas...")
     escolas = transform("escolas", project, year)
-    escolas = repartition(escolas, "escolas")
+    escolas = escolas.repartition(1)
     save(escolas, "escolas", partitions, project)
-    del(escolas)
 
     logging.info(f"{year} - turmas...")
     turmas = transform("turmas", project, year)
-    turmas = repartition(turmas, "turmas")
+    turmas = turmas.repartition(1)
     save(turmas, "turmas", partitions, project)
-    del(turmas)
 
     if int(year) > 2018:
         logging.info(f"{year} - gestores...")
         gestores = transform("gestor", project, year)
-        gestores = repartition(gestores, "gestores")
+        gestores = gestores.repartition(1)
         save(gestores, "gestores", partitions, project)
-        del(gestores)
+
+    partitions = ["NU_ANO_CENSO", "CO_UF"]
 
     logging.info(f"{year} - docentes...")
     docentes = []
     for region in regions:
         docentes.append(transform("docentes", project, year, region))
     docentes = union(docentes)
-    docentes = repartition(docentes, "docentes")
+    docentes = get_partition_balanced(docentes, partitions)
     save(docentes, "docentes", partitions, project)
-    del(docentes)
 
     logging.info(f"{year} - matriculas...")
     matriculas = []
     for region in regions:
         matriculas.append(transform("matricula", project, year, region))
     matriculas = union(matriculas)
-    matriculas = repartition(matriculas, "matriculas")
+    matriculas = get_partition_balanced(matriculas, partitions)
     save(matriculas, "matriculas", partitions, project)
-    del(matriculas)
+
+    return matriculas
 
 
 if __name__ == "__main__":
     main(*sys.argv[1:])
-
