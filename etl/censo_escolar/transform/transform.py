@@ -31,7 +31,9 @@ def load_json(name, bucket_prefix):
 
 
 def mapping(df, map_, column, type_return):
-    map_func = udf(lambda key: map_.get(str(key)), type_return())
+    map_func = udf(lambda key: map_.get(key) if type(key) == str
+                                else None,
+                   type_return())
     df = df.withColumn(column, map_func(col(column)))
     return df
 
@@ -41,9 +43,9 @@ def string_to_date(df, column, year):
         pattern = '%d/%m/%Y'
     else:
         pattern = "%d%b%Y:%H:%M:%S"
-    map_func = udf(lambda date: datetime.strptime(date, pattern)
-    if type(date) == str
-    else None, DateType())
+    map_func = udf(lambda date: datetime.strptime(date, pattern) if type(date) == str
+                                 else None,
+                   DateType())
     df = df.withColumn(column, map_func(col(column)))
     return df
 
@@ -52,17 +54,14 @@ def load_csv(file, bucket_prefix, year, region=None):
     schema = load_json(f"schemas/{file}_schema", bucket_prefix)
     schema = StructType.fromJson(schema)
 
-    if file == "gestor" and int(year) < 2019:
-        df = spark.createDataFrame(data=[], schema=schema)
+    if file in ["matricula", "docentes"]:
+        file = f"gs://{bucket_prefix}-landing/censo-escolar/{year}/{file}_{region}.csv"
     else:
-        if file in ["matricula", "docentes"]:
-            file = f"gs://{bucket_prefix}-landing/censo-escolar/{year}/{file}_{region}.csv"
-        else:
-            file = f"gs://{bucket_prefix}-landing/censo-escolar/{year}/{file}.csv"
+        file = f"gs://{bucket_prefix}-landing/censo-escolar/{year}/{file}.csv"
 
-        df = spark.read.options(header=True,
-                                delimiter="|",
-                                encoding="utf8").schema(schema=schema).csv(file)
+    df = spark.read.options(header=True,
+                            delimiter="|",
+                            encoding="utf8").schema(schema=schema).csv(file)
     return df
 
 
@@ -110,12 +109,42 @@ def transform_date_columns(df, file, year):
     return df
 
 
+def join_columns(df, file, year):
+    if int(year) < 2019 and file == "escolas":
+        df = df.withColumn("IN_MANT_ESCOLA_PRIV_ONG_OSCIP",
+                           col("IN_MANT_ESCOLA_PRIVADA_ONG") |
+                           col("IN_MANT_ESCOLA_PRIVADA_OSCIP"))
+
+        df = df.withColumn("IN_ESGOTO_FOSSA",
+                           col("IN_ESGOTO_FOSSA_SEPTICA") |
+                           col("IN_ESGOTO_FOSSA_COMUM"))
+
+    df = df.drops("IN_MANT_ESCOLA_PRIVADA_ONG",
+                  "IN_MANT_ESCOLA_PRIVADA_OSCIP",
+                  "IN_ESGOTO_FOSSA_SEPTICA",
+                  "IN_ESGOTO_FOSSA_COMUM")
+    return df
+
+
+def rename_columns(df, file, year):
+    if int(year) < 2019 and file == "escolas":
+        df = df.withColumn("IN_DORMITORIO_ALUNO", col("IN_ALOJAM_ALUNO"))
+        df = df.withColumn("IN_DORMITORIO_PROFESSOR", col("IN_ALOJAM_PROFESSOR"))
+        df = df.withColumn("CO_LINGUA_INDIGENA_1", col("CO_LINGUA_INDIGENA"))
+
+    df = df.drops("IN_DORMITORIO_ALUNO", "IN_DORMITORIO_PROFESSOR", "CO_LINGUA_INDIGENA")
+
+    return df
+
+
 def transform(file, bucket, year, region=None):
     df = load_csv(file, bucket, year, region)
     df = transform_string_columns(df, bucket)
     df = transform_boolean_columns(df)
     df = transform_integer_columns(df)
     df = transform_date_columns(df, file, year)
+    df = join_columns(df, file, year)
+    df = rename_columns(df, file, year)
     return df
 
 
@@ -136,6 +165,7 @@ def get_partition_balanced(df, partition_by_columns, desired_rows_per_output_fil
         )
             .repartition(*partition_by_columns, 'repartition_seed')
     )
+    partition_balanced_data = partition_balanced_data.drops("count", "repartition_seed")
     return partition_balanced_data
 
 
