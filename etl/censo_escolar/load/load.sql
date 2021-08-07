@@ -1,6 +1,6 @@
 CREATE SCHEMA IF NOT EXISTS `{PROJECT}.censo_escolar`;
 
-CREATE EXTERNAL TABLE IF NOT EXISTS censo_escolar.turmas 
+CREATE EXTERNAL TABLE IF NOT EXISTS censo_escolar.turmas_external
 WITH PARTITION COLUMNS (
     NU_ANO_CENSO INT
 )
@@ -11,7 +11,7 @@ OPTIONS (
 );
 
 
-CREATE EXTERNAL TABLE IF NOT EXISTS censo_escolar.escolas 
+CREATE EXTERNAL TABLE IF NOT EXISTS censo_escolar.escolas_external
 WITH PARTITION COLUMNS (
     NU_ANO_CENSO INT
 )
@@ -22,7 +22,7 @@ OPTIONS (
 );
 
 
-CREATE EXTERNAL TABLE IF NOT EXISTS censo_escolar.gestores 
+CREATE EXTERNAL TABLE IF NOT EXISTS censo_escolar.gestores_external
 WITH PARTITION COLUMNS (
     NU_ANO_CENSO INT
 )
@@ -33,7 +33,7 @@ OPTIONS (
 );
 
 
-CREATE EXTERNAL TABLE IF NOT EXISTS censo_escolar.docentes 
+CREATE EXTERNAL TABLE IF NOT EXISTS censo_escolar.docentes_external
 WITH PARTITION COLUMNS (
     NU_ANO_CENSO INT
 )
@@ -44,7 +44,7 @@ OPTIONS (
 );
 
 
-CREATE EXTERNAL TABLE IF NOT EXISTS censo_escolar.matriculas 
+CREATE EXTERNAL TABLE IF NOT EXISTS censo_escolar.matriculas_external
 WITH PARTITION COLUMNS (
     NU_ANO_CENSO INT
 )
