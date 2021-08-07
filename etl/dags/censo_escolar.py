@@ -19,10 +19,7 @@ from airflow.providers.google.cloud.operators.dataproc import (
     DataprocCreateWorkflowTemplateOperator
 )
 
-from airflow.providers.google.cloud.operators.bigquery import (
-    BigQueryCreateEmptyDatasetOperator,
-    BigQueryExecuteQueryOperator
-)
+from airflow.providers.google.cloud.operators.bigquery import BigQueryInsertJobOperator
 from kubernetes.client import V1ResourceRequirements
 from google.cloud import storage
 
@@ -285,10 +282,16 @@ with DAG(dag_id="censo-escolar",
         create_workflow_template >> run_dataproc_job >> transformation_finished_with_sucess
 
     with TaskGroup(group_id="load") as load:
-        create_or_replace_bigquery_tables = BigQueryExecuteQueryOperator(
+        create_or_replace_bigquery_tables = BigQueryInsertJobOperator(
             task_id="create_or_replace_bigquery_tables",
-            sql=get_file_from_gcs("censo_escolar/load/load.sql",
-                                  SCRIPTS_BUCKET).replace("{PROJECT}", PROJECT)
+            configuration={
+                "query": {
+                    "query": get_file_from_gcs("censo_escolar/load/load.sql",
+                                  SCRIPTS_BUCKET).replace("{PROJECT}", PROJECT),
+                    "useLegacySql": False,
+                }
+            },
+            location="us"
         )
 
     extract >> transform >> load
