@@ -35,7 +35,8 @@ OPTIONS (
 
 CREATE EXTERNAL TABLE IF NOT EXISTS censo_escolar.docentes 
 WITH PARTITION COLUMNS (
-    NU_ANO_CENSO INT
+    NU_ANO_CENSO INT,
+    CO_REGIAO STRING
 )
 OPTIONS (
     format = "PARQUET",
@@ -46,15 +47,11 @@ OPTIONS (
 
 CREATE EXTERNAL TABLE IF NOT EXISTS censo_escolar.matriculas 
 WITH PARTITION COLUMNS (
-    NU_ANO_CENSO INT
+    NU_ANO_CENSO INT,
+    CO_REGIAO STRING
 )
 OPTIONS (
     format = "PARQUET",
     uris = ["gs://{PROJECT}-processing/censo-escolar/matriculas/*.parquet"],
     hive_partition_uri_prefix="gs://{PROJECT}-processing/censo-escolar/matriculas/"
 );
-
-
-
-
-

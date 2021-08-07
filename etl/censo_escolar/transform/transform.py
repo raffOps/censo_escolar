@@ -152,7 +152,7 @@ def union(dfs):
     return reduce(DataFrame.unionAll, dfs)
 
 
-def get_partition_balanced(df, partition_by_columns, desired_rows_per_output_file=1_500_000):
+def get_partition_balanced(df, partition_by_columns, desired_rows_per_output_file=2_000_000):
     partition_count = df.groupBy(partition_by_columns).count()
     partition_balanced_data = (
         df
@@ -195,7 +195,7 @@ def main(project="rjr-dados-abertos", year="2020"):
         gestores = gestores.repartition(1)
         save(gestores, "gestores", partitions, project)
 
-    #partitions = ["NU_ANO_CENSO", "CO_UF"]
+    partitions = ["NU_ANO_CENSO", "CO_REGIAO"]
 
     logging.info(f"{year} - docentes...")
     docentes = []
