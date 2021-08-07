@@ -1,5 +1,5 @@
 variable "project" {
-  default = "rjr-dados-abertos"
+  default = "rjr-dados-abertos-teste"
 }
 
 variable "github_user" {
