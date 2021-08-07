@@ -119,7 +119,7 @@ def join_columns(df, file, year):
                            col("IN_ESGOTO_FOSSA_SEPTICA") |
                            col("IN_ESGOTO_FOSSA_COMUM"))
 
-    df = df.drops("IN_MANT_ESCOLA_PRIVADA_ONG",
+    df = df.drop("IN_MANT_ESCOLA_PRIVADA_ONG",
                   "IN_MANT_ESCOLA_PRIVADA_OSCIP",
                   "IN_ESGOTO_FOSSA_SEPTICA",
                   "IN_ESGOTO_FOSSA_COMUM")
@@ -132,7 +132,7 @@ def rename_columns(df, file, year):
         df = df.withColumn("IN_DORMITORIO_PROFESSOR", col("IN_ALOJAM_PROFESSOR"))
         df = df.withColumn("CO_LINGUA_INDIGENA_1", col("CO_LINGUA_INDIGENA"))
 
-    df = df.drops("IN_DORMITORIO_ALUNO", "IN_DORMITORIO_PROFESSOR", "CO_LINGUA_INDIGENA")
+    df = df.drop("IN_DORMITORIO_ALUNO", "IN_DORMITORIO_PROFESSOR", "CO_LINGUA_INDIGENA")
 
     return df
 
@@ -165,7 +165,7 @@ def get_partition_balanced(df, partition_by_columns, desired_rows_per_output_fil
         )
             .repartition(*partition_by_columns, 'repartition_seed')
     )
-    partition_balanced_data = partition_balanced_data.drops("count", "repartition_seed")
+    partition_balanced_data = partition_balanced_data.drop("count", "repartition_seed")
     return partition_balanced_data
 
 
@@ -195,7 +195,7 @@ def main(project="rjr-dados-abertos", year="2020"):
         gestores = gestores.repartition(1)
         save(gestores, "gestores", partitions, project)
 
-    partitions = ["NU_ANO_CENSO", "CO_UF"]
+    #partitions = ["NU_ANO_CENSO", "CO_UF"]
 
     logging.info(f"{year} - docentes...")
     docentes = []

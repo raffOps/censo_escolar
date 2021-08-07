@@ -21,7 +21,7 @@ from airflow.providers.google.cloud.operators.dataproc import (
 
 from airflow.providers.google.cloud.operators.bigquery import (
     BigQueryCreateEmptyDatasetOperator,
-    BigQueryInsertJobOperator
+    BigQueryExecuteQueryOperator
 )
 from kubernetes.client import V1ResourceRequirements
 from google.cloud import storage
@@ -165,6 +165,13 @@ def create_dataproc_workflow_substask(**context):
     create_workflow_template_substask_op.execute(context)
 
 
+def get_file_from_gcs(file, bucket):
+    client = storage.Client()
+    bucket = client.get_bucket(bucket)
+    file = bucket.get_blob(file).download_as_string()
+    return file
+
+
 with DAG(dag_id="censo-escolar",
          default_args={'owner': 'airflow'},
          start_date=days_ago(0),
@@ -277,24 +284,21 @@ with DAG(dag_id="censo-escolar",
         check_processing_bucket >> [create_workflow_template, transformation_finished_with_sucess]
         create_workflow_template >> run_dataproc_job >> transformation_finished_with_sucess
 
-    # with TaskGroup(group_id="load") as load:
-    #     create_dataset_if_not_exist = BigQueryCreateEmptyDatasetOperator(
-    #         task_id="create_dataset_if_not_exist",
-    #         project_id=PROJECT,
-    #         dataset_id="dados-abertos",
-    #         location="us",
-    #         exists_ok=True
-    #     )
-    #
-    #     insert_query_job = BigQueryInsertJobOperator(
-    #         task_id="insert_query_job",
-    #         configuration={
-    #             "query": {
-    #                 "query": INSERT_ROWS_QUERY,
-    #                 "useLegacySql": False,
-    #             }
-    #         },
-    #         location=location,
-    #     )
+    with TaskGroup(group_id="load") as load:
+        create_dataset_if_not_exist = BigQueryCreateEmptyDatasetOperator(
+            task_id="create_dataset_if_not_exist",
+            project_id=PROJECT,
+            dataset_id="dados-abertos",
+            location="us",
+            exists_ok=True
+        )
 
-    extract >> transform
+        create_tables_if_not_exists = BigQueryExecuteQueryOperator(
+            task_id="create_tables_if_not_exists",
+            sql=get_file_from_gcs("censo_escolar/load/load.sql",
+                                  SCRIPTS_BUCKET).replace("{PROJECT}", PROJECT),
+        )
+
+        create_dataset_if_not_exist >> create_tables_if_not_exists
+
+    extract >> transform >> load
