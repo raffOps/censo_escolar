@@ -1,5 +1,5 @@
 CREATE SCHEMA IF NOT EXISTS `{PROJECT}.censo_escolar`;
-
+----------------------------------------------------------------------
 CREATE EXTERNAL TABLE IF NOT EXISTS censo_escolar.turmas_external
 WITH PARTITION COLUMNS (
     NU_ANO_CENSO INT
@@ -10,7 +10,10 @@ OPTIONS (
     hive_partition_uri_prefix="gs://{PROJECT}-processing/censo-escolar/turmas/"
 );
 
-
+CREATE OR REPLACE TABLE `{PROJECT}.censo_escolar.turmas`
+    AS select * from `{PROJECT}.censo_escolar.turmas_external`;
+DROP EXTERNAL TABLE `{PROJECT}.censo_escolar.turmas_external`;
+----------------------------------------------------------------------
 CREATE EXTERNAL TABLE IF NOT EXISTS censo_escolar.escolas_external
 WITH PARTITION COLUMNS (
     NU_ANO_CENSO INT
@@ -21,7 +24,10 @@ OPTIONS (
     hive_partition_uri_prefix="gs://{PROJECT}-processing/censo-escolar/escolas/"
 );
 
-
+CREATE OR REPLACE TABLE `{PROJECT}.censo_escolar.escolas`
+    AS select * from `{PROJECT}.censo_escolar.escolas_external`;
+DROP EXTERNAL TABLE `{PROJECT}.censo_escolar.escolas_external`;
+----------------------------------------------------------------------
 CREATE EXTERNAL TABLE IF NOT EXISTS censo_escolar.gestores_external
 WITH PARTITION COLUMNS (
     NU_ANO_CENSO INT
@@ -32,7 +38,10 @@ OPTIONS (
     hive_partition_uri_prefix="gs://{PROJECT}-processing/censo-escolar/gestores/"
 );
 
-
+CREATE OR REPLACE TABLE `{PROJECT}.censo_escolar.gestores`
+    AS select * from `{PROJECT}.censo_escolar.gestores_external`;
+DROP EXTERNAL TABLE `{PROJECT}.censo_escolar.gestores_external`;
+----------------------------------------------------------------------
 CREATE EXTERNAL TABLE IF NOT EXISTS censo_escolar.docentes_external
 WITH PARTITION COLUMNS (
     NU_ANO_CENSO INT
@@ -43,7 +52,10 @@ OPTIONS (
     hive_partition_uri_prefix="gs://{PROJECT}-processing/censo-escolar/docentes/"
 );
 
-
+CREATE OR REPLACE TABLE `{PROJECT}.censo_escolar.docentes`
+    AS select * from `{PROJECT}.censo_escolar.docentes_external`;
+DROP EXTERNAL TABLE `{PROJECT}.censo_escolar.docentes_external`;
+----------------------------------------------------------------------
 CREATE EXTERNAL TABLE IF NOT EXISTS censo_escolar.matriculas_external
 WITH PARTITION COLUMNS (
     NU_ANO_CENSO INT
@@ -53,3 +65,7 @@ OPTIONS (
     uris = ["gs://{PROJECT}-processing/censo-escolar/matriculas/*.parquet"],
     hive_partition_uri_prefix="gs://{PROJECT}-processing/censo-escolar/matriculas/"
 );
+
+CREATE OR REPLACE TABLE `{PROJECT}.censo_escolar.matriculas`
+    AS select * from `{PROJECT}.censo_escolar.matriculas_external`;
+DROP EXTERNAL TABLE `{PROJECT}.censo_escolar.matriculas_external`;
