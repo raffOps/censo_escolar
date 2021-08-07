@@ -195,7 +195,7 @@ def main(project="rjr-dados-abertos", year="2020"):
         gestores = gestores.repartition(1)
         save(gestores, "gestores", partitions, project)
 
-    partitions = ["NU_ANO_CENSO", "CO_REGIAO"]
+    #partitions = ["NU_ANO_CENSO", "CO_REGIAO"]
 
     logging.info(f"{year} - docentes...")
     docentes = []
