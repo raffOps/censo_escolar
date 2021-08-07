@@ -168,7 +168,7 @@ def create_dataproc_workflow_substask(**context):
 def get_file_from_gcs(file, bucket):
     client = storage.Client()
     bucket = client.get_bucket(bucket)
-    file = bucket.get_blob(file).download_as_string()
+    file = bucket.get_blob(file).download_as_text()
     return file
 
 
@@ -294,9 +294,9 @@ with DAG(dag_id="censo-escolar",
 
         create_tables_if_not_exists = BigQueryExecuteQueryOperator(
             task_id="create_tables_if_not_exists",
-            # sql=get_file_from_gcs("censo_escolar/load/load.sql",
-            #                       SCRIPTS_BUCKET).replace("{PROJECT}", PROJECT),
-            sql=f"CREATE SCHEMA IF NOT EXISTS `{PROJECT}.censo_escolar`"
+            sql=get_file_from_gcs("censo_escolar/load/load.sql",
+                                  SCRIPTS_BUCKET).replace("{PROJECT}", PROJECT),
+            #sql=f"CREATE SCHEMA IF NOT EXISTS `{PROJECT}.censo_escolar`"
         )
 
         create_dataset_if_not_exist >> create_tables_if_not_exists
