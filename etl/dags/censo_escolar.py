@@ -311,7 +311,8 @@ with DAG(dag_id="censo-escolar",
             provide_context=True,
             op_kwargs={
                 "true_option": "load.delete_old_tables",
-                "false_option": "load.loading_finished_with_sucess",
+                #"false_option": "load.loading_finished_with_sucess",
+                "false_option": "load.delete_old_tables",
                 "bucket": PROCESSING_BUCKET,
                 "years": YEARS_TO_ETL
             },
