@@ -55,7 +55,7 @@ buckets caso não estejam vazios. Para destruir tudo mesmo, [exclua o projeto cr
 
 # Infraestrutura
 
-![image](img/infra_1.png)
+![image](img/infra.png)
 
 A infraestrutura do projeto se divide entre aquela provisionada pela Terraform utilizando o comando ```make apply```
 e aquela provisionada pelo Composer ao trigar a dag **censo-escolar**.
