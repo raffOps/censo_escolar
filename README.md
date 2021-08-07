@@ -47,6 +47,12 @@ A sincronização acontece sempre que haver um commit no repositório remoto. Po
     
 12. Deploy finalizado! 
 
+
+## Observação importante
+
+Para destruir o projeto execute ```make destroy```. Isso irá destruir todos os recursos criados, menos os
+buckets caso não estejam vazios. Para destruir tudo mesmo, [exclua o projeto criado no passo 2 do deploy](https://console.cloud.google.com/cloud-resource-manager). 
+
 # Infraestrutura
 
 ![image](img/infra.png)
