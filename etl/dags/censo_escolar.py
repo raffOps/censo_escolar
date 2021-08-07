@@ -285,20 +285,10 @@ with DAG(dag_id="censo-escolar",
         create_workflow_template >> run_dataproc_job >> transformation_finished_with_sucess
 
     with TaskGroup(group_id="load") as load:
-        create_dataset_if_not_exist = BigQueryCreateEmptyDatasetOperator(
-            task_id="create_dataset_if_not_exist",
-            project_id=PROJECT,
-            dataset_id="dados-abertos",
-            location="us"
-        )
-
         create_tables_if_not_exists = BigQueryExecuteQueryOperator(
             task_id="create_tables_if_not_exists",
             sql=get_file_from_gcs("censo_escolar/load/load.sql",
-                                  SCRIPTS_BUCKET).replace("{PROJECT}", PROJECT),
-            #sql=f"CREATE SCHEMA IF NOT EXISTS `{PROJECT}.censo_escolar`"
+                                  SCRIPTS_BUCKET).replace("{PROJECT}", PROJECT)
         )
-
-        create_dataset_if_not_exist >> create_tables_if_not_exists
 
     extract >> transform >> load
