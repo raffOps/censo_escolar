@@ -174,8 +174,6 @@ etl/extraction/microdados_educacao_basica_2019/
 
 etl/extraction/microdados_educacao_basica_2020/
 
-*.xlsx
-
 *.pdf
 
 *.rar
