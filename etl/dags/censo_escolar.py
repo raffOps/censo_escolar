@@ -50,7 +50,7 @@ def are_all_these_years_already_in_bucket(**context):
         ti.xcom_push(key="years_not_in_this_bucket",
                      value=list(years_not_in_this_bucket))
         ti.xcom_push(key="cluster_size",
-                     value=calculate_cluster_size(len(years_not_in_this_bucket)))
+                     value=get_gke_cluster_size(len(years_not_in_this_bucket)))
         return true_option
     else:
         return false_option
@@ -82,7 +82,7 @@ def get_pod_resources():
     )
 
 
-def calculate_cluster_size(amount_years):
+def get_gke_cluster_size(amount_years):
     return ceil(amount_years/2) + 1
 
 
@@ -310,17 +310,17 @@ with DAG(dag_id="censo-escolar",
             python_callable=are_all_these_years_already_in_bucket,
             provide_context=True,
             op_kwargs={
-                "true_option": "load.delete_old_tables",
-                #"false_option": "load.loading_finished_with_sucess",
-                "false_option": "load.delete_old_tables",
+                "true_option": "load.delete_old_bigquery_tables",
+                "false_option": "load.loading_finished_with_sucess",
+                #"false_option": "load.delete_old_bigquery_tables",
                 "bucket": PROCESSING_BUCKET,
                 "years": YEARS_TO_ETL
             },
             trigger_rule="none_failed"
         )
 
-        delete_old_tables = BigQueryInsertJobOperator(
-            task_id="delete_old_tables",
+        delete_old_bigquery_tables = BigQueryInsertJobOperator(
+            task_id="delete_old_bigquery_tables",
             configuration={
                 "query": {
                     "query": get_file_from_gcs("censo_escolar/load/delete_old_tables.sql", SCRIPTS_BUCKET),
@@ -330,7 +330,7 @@ with DAG(dag_id="censo-escolar",
             location="us"
         )
 
-        with TaskGroup("create_tables") as create_tables:
+        with TaskGroup("create_bigquery_tables") as create_bigquery_tables:
             for table in ["matriculas", "docentes", "gestores", "escolas", "turmas"]:
                 BigQueryCreateEmptyTableOperator(
                     task_id=f"create_table_{table}",
@@ -345,7 +345,7 @@ with DAG(dag_id="censo-escolar",
             trigger_rule='none_failed'
         )
 
-        check_processing_bucket >> [delete_old_tables, loading_finished_with_sucess]
-        delete_old_tables >> create_tables >> loading_finished_with_sucess
+        check_processing_bucket >> [delete_old_bigquery_tables, loading_finished_with_sucess]
+        delete_old_bigquery_tables >> create_bigquery_tables >> loading_finished_with_sucess
 
     extract >> transform >> load
