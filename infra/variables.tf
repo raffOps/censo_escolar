@@ -1,11 +1,11 @@
 variable "project" {
-  default = "rjr-dados-abertos"
+  default = ""
 }
 
 variable "github_user" {
-  default = "rjribeiro"
+  default = ""
 }
 
 variable "github_branch" {
-  default = "dev"
+  default = "prd"
 }

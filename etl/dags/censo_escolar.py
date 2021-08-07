@@ -51,6 +51,10 @@ def are_all_these_years_already_in_bucket(**context):
                      value=list(years_not_in_this_bucket))
         ti.xcom_push(key="cluster_size",
                      value=get_gke_cluster_size(len(years_not_in_this_bucket)))
+
+        return true_option
+    elif ti.xcom_pull(task_ids="transform.check_processing_bucket",
+                      key="years_not_in_this_bucket") and context["task"].task_id == "load.check_processing_bucket":
         return true_option
     else:
         return false_option
