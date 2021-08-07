@@ -192,11 +192,7 @@ def get_table_resource(table, project):
     return table_resource
 
 
-with DAG(dag_id="censo-escolar",
-         default_args={'owner': 'airflow'},
-         start_date=days_ago(0),
-         user_defined_macros={'json': json}
-         ) as dag:
+with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=days_ago(0)) as dag:
     with TaskGroup(group_id="extract") as extract:
         check_landing_bucket = BranchPythonOperator(
             task_id="check_landing_bucket",
