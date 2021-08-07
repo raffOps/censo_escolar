@@ -285,8 +285,8 @@ with DAG(dag_id="censo-escolar",
         create_workflow_template >> run_dataproc_job >> transformation_finished_with_sucess
 
     with TaskGroup(group_id="load") as load:
-        create_tables_if_not_exists = BigQueryExecuteQueryOperator(
-            task_id="create_tables_if_not_exists",
+        create_or_replace_bigquery_tables = BigQueryExecuteQueryOperator(
+            task_id="create_or_replace_bigquery_tables",
             sql=get_file_from_gcs("censo_escolar/load/load.sql",
                                   SCRIPTS_BUCKET).replace("{PROJECT}", PROJECT)
         )
