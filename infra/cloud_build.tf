@@ -1,10 +1,10 @@
  resource "google_cloudbuild_trigger" "update_dags" {
    name = "update-dags"
    github {
-     owner = var.git_user
+     owner = var.github_user
      name = "etl_censo_escolar"
      push {
-       branch = "dev"
+       branch = var.github_branch
      }
    }
 
@@ -18,10 +18,10 @@
 resource "google_cloudbuild_trigger" "update_scripts" {
   name = "update-etl-bucket"
   github {
-    owner = var.git_user
+    owner = var.github_user
     name = "etl_censo_escolar"
     push {
-      branch = "dev"
+      branch = var.github_branch
     }
   }
 
