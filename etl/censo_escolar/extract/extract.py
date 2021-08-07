@@ -5,11 +5,17 @@ from glob import glob
 from time import sleep
 from zipfile import ZipFile, BadZipfile
 import subprocess
+import logging
 
 import requests
 from google.cloud import storage
 
-CREDENTIALS = "./key.json"
+if os.getenv("GOOGLE_APPLICATION_CREDENTIALS"):
+    CREDENTIALS = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+else:
+    CREDENTIALS = "./key.json"
+
+logging.basicConfig(level="INFO")
 
 
 def get_url(year):
@@ -39,7 +45,7 @@ def test_zip(year):
 
 def download_file(year):
     url = get_url(year)
-    print(f"Downloading {url}")
+    logging.info(f"Downloading {url}")
     try:
         make_request(url)
         test_zip(year)
@@ -55,11 +61,11 @@ def download_file(year):
     except Exception as e:
         raise Exception(f"Download error: {e}")
 
-    print("Download complete")
+    logging.info("Download complete")
 
 
 def unzip_file(year):
-    print(f"Unziping")
+    logging.info("Unziping")
     with ZipFile(f"{year}.zip", 'r') as zip:
         zip.extractall()
 
@@ -69,20 +75,20 @@ def unzip_file(year):
         subprocess.run(["unar", "-o", f"{year}/DADOS",  recursive_zip_name])
         os.remove(f"{recursive_zip_name}")
 
-    print("Unzip complete")
+    logging.info("Unzip complete")
 
 
 def upload_files(year, bucket):
-    print("Uploading files")
+    logging.info("Uploading files")
     client = storage.Client.from_service_account_json(json_credentials_path=CREDENTIALS)
     bucket = client.get_bucket(bucket)
     for file in glob(f"*{year}/DADOS/*.CSV"):
         csv_name = (re.search("DADOS\/(.*)\.", file).group(1) + ".csv").lower()
-        print(f"Uploading: gs://{bucket}/censo-escolar/{year}/{csv_name}")
+        logging.info(f"Uploading: gs://{bucket}/censo-escolar/{year}/{csv_name}")
         blob = bucket.blob(f"censo-escolar/{year}/{csv_name}")
         blob.upload_from_filename(file)
 
-    print("Upload complete")
+    logging.info("Upload complete")
 
 
 if __name__ == "__main__":
