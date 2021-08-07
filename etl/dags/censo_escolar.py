@@ -18,6 +18,10 @@ from airflow.providers.google.cloud.operators.dataproc import (
     DataprocInstantiateWorkflowTemplateOperator,
     DataprocCreateWorkflowTemplateOperator
 )
+from airflow.providers.google.cloud.operators.bigquery import (
+    BigQueryInsertJobOperator,
+    BigQueryCreateEmptyTableOperator
+)
 from kubernetes.client import V1ResourceRequirements
 from google.cloud import storage
 
@@ -29,10 +33,10 @@ LANDING_BUCKET = f"{PROJECT}-landing"
 PROCESSING_BUCKET = f"{PROJECT}-processing"
 CONSUMER_BUCKET = f"{PROJECT}-consumer"
 SCRIPTS_BUCKET = f"{PROJECT}-scripts"
-YEARS = list(map(str, range(FIRST_YEAR, LAST_YEAR + 1)))
+YEARS_TO_ETL = list(map(str, range(FIRST_YEAR, LAST_YEAR + 1)))
 
 
-def check_years(**context):
+def are_all_these_years_already_in_bucket(**context):
     ti = context["ti"]
     true_option = context["true_option"]
     false_option = context["false_option"]
@@ -46,7 +50,7 @@ def check_years(**context):
         ti.xcom_push(key="years_not_in_this_bucket",
                      value=list(years_not_in_this_bucket))
         ti.xcom_push(key="cluster_size",
-                     value=calculate_cluster_size(len(years_not_in_this_bucket)))
+                     value=get_gke_cluster_size(len(years_not_in_this_bucket)))
         return true_option
     else:
         return false_option
@@ -78,13 +82,13 @@ def get_pod_resources():
     )
 
 
-def calculate_cluster_size(amount_years):
+def get_gke_cluster_size(amount_years):
     return ceil(amount_years/2) + 1
 
 
 def get_gke_cluster_def():
     cluster_def = {
-        "name": "censo-escolar-extraction",
+        "name": "censo-escolar-extract",
         "initial_node_count": '{{ ti.xcom_pull(task_ids="extract.check_landing_bucket", key="cluster_size") }}',
         "location": "southamerica-east1-a",
         "node_config": {
@@ -129,7 +133,7 @@ def get_dataproc_workflow(years):
         job = {
             "step_id": step_id,
             "pyspark_job": {
-                "main_python_file_uri": f"gs://{SCRIPTS_BUCKET}/censo_escolar/transformation/transform.py",
+                "main_python_file_uri": f"gs://{SCRIPTS_BUCKET}/censo_escolar/transform/transform.py",
                 "args": [PROJECT, year_]
             }
         }
@@ -143,6 +147,7 @@ def get_dataproc_workflow(years):
     workflow["jobs"] = jobs
 
     return workflow
+
 
 def create_dataproc_workflow_substask(**context):
     ti = context["ti"]
@@ -159,21 +164,45 @@ def create_dataproc_workflow_substask(**context):
     create_workflow_template_substask_op.execute(context)
 
 
-with DAG(dag_id="censo-escolar",
-         default_args={'owner': 'airflow'},
-         start_date=days_ago(0),
-         user_defined_macros={'json': json}
-         ) as dag:
+def get_file_from_gcs(file, bucket):
+    client = storage.Client()
+    bucket = client.get_bucket(bucket)
+    file = bucket.get_blob(file).download_as_text()
+    return file
+
+
+def get_table_resource(table, project):
+    table_resource = {
+        "table_reference": {
+            "project_id": project,
+            "dataset_id": "censo_escolar",
+            "table_id": table
+        },
+        "external_data_configuration": {
+            "source_uris": [f"gs://{project}-processing/censo-escolar/{table}/*.parquet"],
+            "source_format": "PARQUET",
+            "autodetect": True,
+            "hive_partitioning_options": {
+                "mode": "AUTO",
+                "source_uri_prefix": f"gs://{project}-processing/censo-escolar/{table}/"
+            }
+        },
+        "location": "us"
+    }
+    return table_resource
+
+
+with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=days_ago(0)) as dag:
     with TaskGroup(group_id="extract") as extract:
         check_landing_bucket = BranchPythonOperator(
             task_id="check_landing_bucket",
-            python_callable=check_years,
+            python_callable=are_all_these_years_already_in_bucket,
             provide_context=True,
             op_kwargs={
                 "true_option": 'extract.create_gke_cluster',
                 "false_option": "extract.extraction_finished_wih_sucess",
                 "bucket": LANDING_BUCKET,
-                "years": YEARS
+                "years": YEARS_TO_ETL
             }
         )
 
@@ -185,7 +214,7 @@ with DAG(dag_id="censo-escolar",
         )
 
         with TaskGroup(group_id="download") as download:
-            for year in YEARS:
+            for year in YEARS_TO_ETL:
                 check_before_download = BranchPythonOperator(
                     task_id=f"check_before_download_year_{year}",
                     python_callable=check_year,
@@ -202,7 +231,7 @@ with DAG(dag_id="censo-escolar",
                     task_id=f"download_year_{year}",
                     project_id=PROJECT,
                     location="southamerica-east1-a",
-                    cluster_name="censo-escolar-extraction",
+                    cluster_name="censo-escolar-extract",
                     namespace="default",
                     image=f"gcr.io/{PROJECT}/censo_escolar_extraction:latest",
                     arguments=["sh", "-c", f'python extract.py {year} {LANDING_BUCKET}'],
@@ -222,7 +251,7 @@ with DAG(dag_id="censo-escolar",
 
         destroy_gke_cluster = GKEDeleteClusterOperator(
             task_id="destroy_gke_cluster",
-            name="censo-escolar-extraction",
+            name="censo-escolar-extract",
             project_id=PROJECT,
             location="southamerica-east1-a",
             trigger_rule="all_done"
@@ -239,13 +268,13 @@ with DAG(dag_id="censo-escolar",
     with TaskGroup(group_id="transform") as transform:
         check_processing_bucket = BranchPythonOperator(
             task_id="check_processing_bucket",
-            python_callable=check_years,
+            python_callable=are_all_these_years_already_in_bucket,
             provide_context=True,
             op_kwargs={
                 "true_option": "transform.create_workflow_template",
                 "false_option": "transform.transformation_finished_with_sucess",
                 "bucket": PROCESSING_BUCKET,
-                "years": YEARS
+                "years": YEARS_TO_ETL
             },
             trigger_rule="none_failed"
         )
@@ -271,4 +300,48 @@ with DAG(dag_id="censo-escolar",
         check_processing_bucket >> [create_workflow_template, transformation_finished_with_sucess]
         create_workflow_template >> run_dataproc_job >> transformation_finished_with_sucess
 
-    extract >> transform
+    with TaskGroup(group_id="load") as load:
+        check_processing_bucket = BranchPythonOperator(
+            task_id="check_processing_bucket",
+            python_callable=are_all_these_years_already_in_bucket,
+            provide_context=True,
+            op_kwargs={
+                "true_option": "load.delete_old_bigquery_tables",
+                "false_option": "load.loading_finished_with_sucess",
+                #"false_option": "load.delete_old_bigquery_tables",
+                "bucket": PROCESSING_BUCKET,
+                "years": YEARS_TO_ETL
+            },
+            trigger_rule="none_failed"
+        )
+
+        delete_old_bigquery_tables = BigQueryInsertJobOperator(
+            task_id="delete_old_bigquery_tables",
+            configuration={
+                "query": {
+                    "query": get_file_from_gcs("censo_escolar/load/delete_old_tables.sql", SCRIPTS_BUCKET),
+                    "useLegacySql": False,
+                }
+            },
+            location="us"
+        )
+
+        with TaskGroup("create_bigquery_tables") as create_bigquery_tables:
+            for table in ["matriculas", "docentes", "gestores", "escolas", "turmas"]:
+                BigQueryCreateEmptyTableOperator(
+                    task_id=f"create_table_{table}",
+                    dataset_id='censo_escolar',
+                    table_id=table,
+                    project_id=PROJECT,
+                    table_resource=get_table_resource(table, PROJECT)
+                )
+
+        loading_finished_with_sucess = DummyOperator(
+            task_id="loading_finished_with_sucess",
+            trigger_rule='none_failed'
+        )
+
+        check_processing_bucket >> [delete_old_bigquery_tables, loading_finished_with_sucess]
+        delete_old_bigquery_tables >> create_bigquery_tables >> loading_finished_with_sucess
+
+    extract >> transform >> load
