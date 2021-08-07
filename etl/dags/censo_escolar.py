@@ -289,8 +289,7 @@ with DAG(dag_id="censo-escolar",
             task_id="create_dataset_if_not_exist",
             project_id=PROJECT,
             dataset_id="dados-abertos",
-            location="us",
-            exists_ok=True
+            location="us"
         )
 
         create_tables_if_not_exists = BigQueryExecuteQueryOperator(
