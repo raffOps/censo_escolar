@@ -11,7 +11,7 @@ resource "google_composer_environment" "composer" {
       software_config {
         image_version = "composer-1.17.0-preview.2-airflow-2.0.1"
         env_variables = {
-          AIRFLOW_VAR_CENSO_ESCOLAR_FIRST_YEAR: 2011
+          AIRFLOW_VAR_CENSO_ESCOLAR_FIRST_YEAR: 2019
           AIRFLOW_VAR_CENSO_ESCOLAR_LAST_YEAR: 2020
           AIRFLOW_VAR_PROJECT: var.project
         }
