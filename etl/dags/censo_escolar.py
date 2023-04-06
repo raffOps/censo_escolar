@@ -42,11 +42,15 @@ def are_all_these_years_already_in_bucket(**context):
     false_option = context["false_option"]
     client = storage.Client()
     bucket = client.get_bucket(context["bucket"])
-    years_in_this_bucket = set([re.findall("([0-9]{4})\/", blob.name)[0]
-                                for blob in list(bucket.list_blobs(prefix="censo-escolar"))
-                                if re.findall("([0-9]{4})\/", blob.name)])
-    years_not_in_this_bucket = set(context["years"]) - years_in_this_bucket
-    if years_not_in_this_bucket:
+    years_in_this_bucket = {
+        re.findall("([0-9]{4})\/", blob.name)[0]
+        for blob in list(bucket.list_blobs(prefix="censo-escolar"))
+        if re.findall("([0-9]{4})\/", blob.name)
+    }
+    if (
+        years_not_in_this_bucket := set(context["years"])
+        - years_in_this_bucket
+    ):
         ti.xcom_push(key="years_not_in_this_bucket",
                      value=list(years_not_in_this_bucket))
         ti.xcom_push(key="cluster_size",
@@ -67,10 +71,7 @@ def check_year(**context):
     false_option = context["false_option"]
     years_not_in_this_bucket = ti.xcom_pull(task_ids=context["task"],
                                             key="years_not_in_this_bucket")
-    if year in years_not_in_this_bucket:
-        return true_option
-    else:
-        return false_option
+    return true_option if year in years_not_in_this_bucket else false_option
 
 
 def get_pod_resources():
@@ -91,16 +92,15 @@ def get_gke_cluster_size(amount_years):
 
 
 def get_gke_cluster_def():
-    cluster_def = {
+    return {
         "name": "censo-escolar-extract",
         "initial_node_count": '{{ ti.xcom_pull(task_ids="extract.check_landing_bucket", key="cluster_size") }}',
         "location": "southamerica-east1-a",
         "node_config": {
             "oauth_scopes": ["https://www.googleapis.com/auth/cloud-platform"],
-            "machine_type": "e2-standard-4"
+            "machine_type": "e2-standard-4",
         },
     }
-    return cluster_def
 
 
 def get_dataproc_workflow(years):
@@ -171,29 +171,29 @@ def create_dataproc_workflow_substask(**context):
 def get_file_from_gcs(file, bucket):
     client = storage.Client()
     bucket = client.get_bucket(bucket)
-    file = bucket.get_blob(file).download_as_text()
-    return file
+    return bucket.get_blob(file).download_as_text()
 
 
 def get_table_resource(table, project):
-    table_resource = {
+    return {
         "table_reference": {
             "project_id": project,
             "dataset_id": "censo_escolar",
-            "table_id": table
+            "table_id": table,
         },
         "external_data_configuration": {
-            "source_uris": [f"gs://{project}-processing/censo-escolar/{table}/*.parquet"],
+            "source_uris": [
+                f"gs://{project}-processing/censo-escolar/{table}/*.parquet"
+            ],
             "source_format": "PARQUET",
             "autodetect": True,
             "hive_partitioning_options": {
                 "mode": "AUTO",
-                "source_uri_prefix": f"gs://{project}-processing/censo-escolar/{table}/"
-            }
+                "source_uri_prefix": f"gs://{project}-processing/censo-escolar/{table}/",
+            },
         },
-        "location": "us"
+        "location": "us",
     }
-    return table_resource
 
 
 with DAG(dag_id="censo-escolar", default_args={'owner': 'airflow'}, start_date=days_ago(0)) as dag:

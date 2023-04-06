@@ -10,11 +10,7 @@ import logging
 import requests
 from google.cloud import storage
 
-if os.getenv("GOOGLE_APPLICATION_CREDENTIALS"):
-    CREDENTIALS = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
-else:
-    CREDENTIALS = "./key.json"
-
+CREDENTIALS = os.getenv("GOOGLE_APPLICATION_CREDENTIALS") or "./key.json"
 logging.basicConfig(level="INFO")
 
 
@@ -83,7 +79,7 @@ def upload_files(year, bucket):
     client = storage.Client.from_service_account_json(json_credentials_path=CREDENTIALS)
     bucket = client.get_bucket(bucket)
     for file in glob(f"*{year}/DADOS/*.CSV"):
-        csv_name = (re.search("DADOS\/(.*)\.", file).group(1) + ".csv").lower()
+        csv_name = (re.search("DADOS\/(.*)\.", file)[1] + ".csv").lower()
         logging.info(f"Uploading: gs://{bucket}/censo-escolar/{year}/{csv_name}")
         blob = bucket.blob(f"censo-escolar/{year}/{csv_name}")
         blob.upload_from_filename(file)

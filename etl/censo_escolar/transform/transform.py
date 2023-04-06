@@ -26,8 +26,7 @@ def add_prefix_in_columns(df, prefix):
 def load_json(name, bucket_prefix):
     bucket = storage.Client().get_bucket(f"{bucket_prefix}-scripts")
     blob = bucket.blob(f'censo_escolar/transform/{name}.json')
-    maps = json.loads(blob.download_as_string())
-    return maps
+    return json.loads(blob.download_as_string())
 
 
 def mapping(df, map_, column, type_return):
@@ -39,10 +38,7 @@ def mapping(df, map_, column, type_return):
 
 
 def string_to_date(df, column, year):
-    if int(year) > 2014:
-        pattern = '%d/%m/%Y'
-    else:
-        pattern = "%d%b%Y:%H:%M:%S"
+    pattern = '%d/%m/%Y' if int(year) > 2014 else "%d%b%Y:%H:%M:%S"
     map_func = udf(lambda date: datetime.strptime(date, pattern) if type(date) == str
                                  else None,
                    DateType())
@@ -59,10 +55,11 @@ def load_csv(file, bucket_prefix, year, region=None):
     else:
         file = f"gs://{bucket_prefix}-landing/censo-escolar/{year}/{file}.csv"
 
-    df = spark.read.options(header=True,
-                            delimiter="|",
-                            encoding="utf8").schema(schema=schema).csv(file)
-    return df
+    return (
+        spark.read.options(header=True, delimiter="|", encoding="utf8")
+        .schema(schema=schema)
+        .csv(file)
+    )
 
 
 def transform_string_columns(df, bucket):
@@ -198,17 +195,15 @@ def main(project="rjr-dados-abertos", year="2020"):
     #partitions = ["NU_ANO_CENSO", "CO_REGIAO"]
 
     logging.info(f"{year} - docentes...")
-    docentes = []
-    for region in regions:
-        docentes.append(transform("docentes", project, year, region))
+    docentes = [transform("docentes", project, year, region) for region in regions]
     docentes = union(docentes)
     docentes = get_partition_balanced(docentes, partitions)
     save(docentes, "docentes", partitions, project)
 
     logging.info(f"{year} - matriculas...")
-    matriculas = []
-    for region in regions:
-        matriculas.append(transform("matricula", project, year, region))
+    matriculas = [
+        transform("matricula", project, year, region) for region in regions
+    ]
     matriculas = union(matriculas)
     matriculas = get_partition_balanced(matriculas, partitions)
     save(matriculas, "matriculas", partitions, project)
